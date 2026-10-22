@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Styler</title>
+<style>
+  :root {
+    --bg: #f3f3f5;
+    --card: #ffffff;
+    --fg: #1d1d1f;
+    --muted: #6e6e73;
+    --faint: #a1a1a6;
+    --line: rgba(0, 0, 0, .08);
+    --field: #f5f5f7;
+    --accent: #3e7ab6;
+    --accent-soft: #dfecf8;
+    --danger: #b3261e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 0 0 1px rgba(0, 0, 0, .04);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card: #2a2a2d;
+      --fg: #f2f2f7;
+      --muted: #a1a1a8;
+      --faint: #6e6e73;
+      --line: rgba(255, 255, 255, .08);
+      --field: #333336;
+      --accent: #6aa3dc;
+      --accent-soft: #24374a;
+      --danger: #ff6b60;
+      --shadow: 0 0 0 1px rgba(255, 255, 255, .06);
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  main { flex: 1; padding: 16px 16px 8px; }
+
+  /* ----- Header */
+
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  header .logo {
+    width: 32px; height: 32px; border-radius: 8px; flex: none;
+    background: linear-gradient(135deg, #4f8fcf, #2f5f93);
+    display: grid; place-items: center; color: #fff;
+  }
+  header h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 12px; }
+  header .switch { margin-left: auto; }
+
+  /* ----- Cards */
+
+  .card { background: var(--card); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 12px; }
+  .card > .head { display: flex; align-items: center; gap: 8px; padding: 11px 14px; }
+  .card > .head h2 { font-size: 13px; font-weight: 600; margin: 0; flex: 1; }
+  .card > .body { padding: 2px 14px 12px; }
+  .card > .head + .body { border-top: 1px solid var(--line); padding-top: 10px; }
+
+  .row { display: flex; align-items: center; gap: 10px; min-height: 32px; }
+  .row + .row { border-top: 1px solid var(--line); }
+  .row > .label { flex: 1; color: var(--fg); }
+  .row > .label small { display: block; color: var(--muted); font-size: 11px; }
+
+  fieldset { border: 0; padding: 0; margin: 0; min-width: 0; transition: opacity .15s; }
+  fieldset:disabled { opacity: .4; pointer-events: none; }
+
+  /* ----- Controls */
+
+  .switch {
+    appearance: none; -webkit-appearance: none; margin: 0; flex: none;
+    width: 32px; height: 19px; border-radius: 10px; background: var(--faint);
+    position: relative; cursor: pointer; transition: background .15s;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px;
+    border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+    transition: transform .15s;
+  }
+  .switch:checked { background: var(--accent); }
+  .switch:checked::after { transform: translateX(13px); }
+
+  .segmented { display: inline-flex; background: var(--field); border-radius: 7px; padding: 2px; gap: 2px; }
+  .segmented button {
+    border: 0; background: none; color: var(--fg); font: inherit; font-size: 12px;
+    padding: 3px 10px; border-radius: 5px; cursor: pointer;
+  }
+  .segmented button.on { background: var(--card); box-shadow: 0 1px 2px rgba(0, 0, 0, .15); font-weight: 500; }
+
+  input[type=text], textarea {
+    font: inherit; color: var(--fg); background: var(--field);
+    border: 1px solid transparent; border-radius: 6px; outline: none; user-select: text;
+  }
+  input[type=text] { padding: 5px 8px; width: 100%; }
+  input[type=text]:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  textarea {
+    width: 100%; padding: 8px 10px; resize: vertical; display: block;
+    font: 11px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 120px; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--faint) 45%, transparent); outline: none; }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+    background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .3); cursor: pointer;
+  }
+  .value { width: 34px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* ----- Color swatches : a native color input stretched over the swatch */
+
+  .states { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .states th { font-weight: 500; font-size: 11px; color: var(--muted); text-align: center; padding: 6px 0 4px; }
+  .states th:first-child { text-align: left; }
+  .states td { padding: 5px 0; border-top: 1px solid var(--line); text-align: center; }
+  .states td:first-child { text-align: left; }
+
+  .swatch { display: inline-flex; align-items: center; gap: 4px; }
+  .swatch .chip {
+    position: relative; width: 44px; height: 22px; border-radius: 6px; overflow: hidden;
+    box-shadow: inset 0 0 0 1px var(--line); cursor: pointer;
+    background: var(--c, transparent);
+  }
+  .swatch.off .chip {
+    background:
+      linear-gradient(to top right, transparent calc(50% - .75px), var(--faint) calc(50% - .75px), var(--faint) calc(50% + .75px), transparent calc(50% + .75px)),
+      var(--field);
+  }
+  .swatch .chip input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+  .swatch .clear {
+    width: 16px; height: 16px; border: 0; border-radius: 50%; padding: 0; cursor: pointer;
+    background: none; color: var(--faint); font-size: 13px; line-height: 16px;
+  }
+  .swatch .clear:hover { color: var(--fg); background: var(--field); }
+  .swatch.off .clear { visibility: hidden; }
+
+  /* ----- Toolbar preview : always light, like the toolbars whose colors are being set */
+
+  .preview {
+    display: flex; gap: 14px; justify-content: center; align-items: flex-end;
+    padding: 12px 8px 10px; margin: 2px 0 8px; border-radius: 8px; background: #ececee;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .06);
+  }
+  .preview figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .preview figcaption { font-size: 10px; color: #6e6e73; text-transform: uppercase; letter-spacing: .04em; }
+  .preview .btn {
+    width: 32px; height: 32px; display: grid; place-items: center; color: #3a3a3c;
+    border-style: solid; border-color: transparent;
+  }
+  .preview svg { width: 20px; height: 20px; }
+  .preview .bar { display: flex; align-items: center; padding: 1px 1px 1px 11px; border: 1px solid transparent; }
+  .preview .sep { width: 6px; height: 32px; }
+
+  .sub { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 2px; }
+
+  /* ----- Disclosure */
+
+  details > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 11px 14px; font-weight: 600;
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before {
+    content: ""; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0;
+    transform: rotate(-45deg); transition: transform .15s; margin: 0 2px 0 1px;
+  }
+  details[open] > summary::before { transform: rotate(45deg); }
+  details > summary .hint { font-weight: normal; }
+  details > .body { border-top: 1px solid var(--line); padding: 10px 14px 12px; }
+  .hint { color: var(--muted); font-size: 11px; }
+  #qss { color: var(--muted); }
+
+  /* ----- Footer */
+
+  footer {
+    position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  }
+  #status { flex: 1; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #34c759; flex: none; }
+  #status.warn { color: var(--danger); }
+  #status.warn::before { background: var(--danger); }
+  #status.idle::before { background: var(--faint); }
+  .btn-text {
+    font: inherit; font-size: 12px; color: var(--fg); background: var(--card);
+    border: 0; border-radius: 6px; padding: 5px 11px; cursor: pointer; box-shadow: var(--shadow);
+  }
+  .btn-text:hover { background: var(--field); }
+  .btn-text:active { transform: translateY(.5px); }
+</style>
+</head>
+<body>
+
+<main>
+
+  <header>
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 3H5a2 2 0 0 0-2 2v3h18V5a2 2 0 0 0-2-2Z"/><path d="M3 8v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8"/><path d="M8 3v5M12 3v5"/></svg>
+    </div>
+    <div>
+      <h1>Styler</h1>
+      <p>Qt style sheet for the SketchUp interface</p>
+    </div>
+    <input type="checkbox" class="switch" id="enabled" title="Enable styling">
+  </header>
+
+  <fieldset id="all">
+
+    <section class="card">
+      <div class="head">
+        <h2>Toolbars</h2>
+        <input type="checkbox" class="switch" id="tb_enabled" title="Style toolbars">
+      </div>
+      <div class="body">
+        <fieldset id="tb">
+
+          <div class="row">
+            <div class="label">Scope</div>
+            <div class="segmented" id="tb_scope">
+              <button type="button" data-v="all">All toolbars</button>
+              <button type="button" data-v="titles">Named</button>
+            </div>
+          </div>
+          <div class="row" id="titles_row">
+            <input type="text" id="tb_titles" placeholder="Claude Bridge, Extension Sources" spellcheck="false">
+          </div>
+
+          <div class="sub">Buttons</div>
+          <div class="preview" id="preview"></div>
+          <div class="row">
+            <div class="label">Corner radius</div>
+            <input type="range" id="tb_radius" min="0" max="16" step="1">
+            <span class="value" id="tb_radius_v"></span>
+          </div>
+          <div class="row">
+            <div class="label">Border<small>2 px not measured yet</small></div>
+            <div class="segmented" id="tb_border_width">
+              <button type="button" data-v="0">None</button>
+              <button type="button" data-v="1">1 px</button>
+              <button type="button" data-v="2">2 px</button>
+            </div>
+          </div>
+
+          <table class="states">
+            <thead><tr><th>State</th><th>Background</th><th>Border</th></tr></thead>
+            <tbody id="states"></tbody>
+          </table>
+
+          <div class="sub">Bar</div>
+          <div class="preview" id="bar_preview"></div>
+          <div class="row">
+            <div class="label">Background</div>
+            <span data-swatch="bar_background" title="Bar background"></span>
+          </div>
+          <div class="row">
+            <div class="label">Border<small>none when unset</small></div>
+            <div class="segmented" id="bar_border_width">
+              <button type="button" data-v="1">1 px</button>
+              <button type="button" data-v="2">2 px</button>
+            </div>
+            <span data-swatch="bar_border" title="Bar border"></span>
+          </div>
+          <div class="row">
+            <div class="label">Corner radius</div>
+            <input type="range" id="bar_radius" min="0" max="12" step="1">
+            <span class="value" id="bar_radius_v"></span>
+          </div>
+          <div class="row">
+            <div class="label">Padding<small>edge to buttons, native 2 px, at least the border</small></div>
+            <input type="range" id="bar_padding" min="1" max="8" step="1">
+            <span class="value" id="bar_padding_v"></span>
+          </div>
+
+          <div class="sub">Toolbar area</div>
+          <div class="row">
+            <div class="label">Background<small>behind the toolbars, whatever the scope</small></div>
+            <span data-swatch="area_background" title="Toolbar area background"></span>
+          </div>
+
+          <div class="sub">Separators</div>
+          <div class="row">
+            <div class="label">Color<small>1 px line, hidden when unset</small></div>
+            <span data-swatch="separator_color" title="Separator color"></span>
+          </div>
+          <div class="row">
+            <div class="label">Inset<small>shortened at each end</small></div>
+            <input type="range" id="separator_inset" min="0" max="12" step="1">
+            <span class="value" id="separator_inset_v"></span>
+          </div>
+
+        </fieldset>
+      </div>
+    </section>
+
+    <details class="card">
+      <summary>Extra QSS <span class="hint">appended as is</span></summary>
+      <div class="body">
+        <textarea id="extra_qss" rows="6" spellcheck="false" placeholder="QMenu { … }"></textarea>
+        <p class="hint">Never use <code>qproperty-*</code> on sub-controls (<code>::close-button</code>…): Qt crashes.</p>
+      </div>
+    </details>
+
+  </fieldset>
+
+  <details class="card">
+    <summary>Generated style sheet</summary>
+    <div class="body">
+      <textarea id="qss" rows="14" readonly spellcheck="false"></textarea>
+    </div>
+  </details>
+
+</main>
+
+<footer>
+  <div id="status" class="idle">Ready</div>
+  <button class="btn-text" id="reset" type="button">Defaults</button>
+  <button class="btn-text" id="native" type="button">Restore native</button>
+</footer>
+
+<script>
+  const STATES = ['hover', 'checked', 'pressed'];
+  const KEYS = ['background', 'border'];
+  const $ = (id) => document.getElementById(id);
+  const cap = (s) => s[0].toUpperCase() + s.slice(1);
+
+  // Color swatches, keyed by id : hex value, or '' when unset.
+  const colors = {};
+  const swatchHtml = (key, title) =>
+    `<span class="swatch off" id="${key}">` +
+      `<span class="chip"><input type="color" title="${title}"></span>` +
+      `<button type="button" class="clear" title="Unset">×</button></span>`;
+  const bindSwatch = (key) => {
+    const sw = $(key);
+    const input = sw.querySelector('input');
+    input.addEventListener('input', () => { setColor(key, input.value); preview(); });
+    input.addEventListener('change', () => commit());
+    sw.querySelector('.clear').addEventListener('click', () => { setColor(key, ''); commit(); });
+  };
+  const setColor = (key, v) => {
+    colors[key] = v;
+    const sw = $(key);
+    sw.classList.toggle('off', !v);
+    sw.querySelector('.chip').style.setProperty('--c', v || 'transparent');
+    if (v) sw.querySelector('input').value = v;
+  };
+  const hex = (v) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : '');
+
+  const tbody = $('states');
+  STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + KEYS.map((k) => `<td>${swatchHtml(`${st}_${k}`, `${cap(st)} ${k}`)}</td>`).join('');
+    tbody.appendChild(tr);
+    KEYS.forEach((k) => bindSwatch(`${st}_${k}`));
+  });
+  document.querySelectorAll('[data-swatch]').forEach((el) => {
+    const key = el.dataset.swatch;
+    el.outerHTML = swatchHtml(key, el.title);
+    bindSwatch(key);
+  });
+
+  // Segmented controls
+  const segValue = (id) => ($(id).querySelector('.on') || {}).dataset?.v;
+  const setSeg = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
+  ['tb_scope', 'tb_border_width', 'bar_border_width'].forEach((id) => $(id).addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setSeg(id, b.dataset.v);
+    commit();
+  }));
+
+  // Live toolbar preview
+  const ICONS = [
+    '<path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>',
+    '<path d="M3 7l9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+    '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>',
+    '<path d="M4 4l7 17 2.5-7.5L21 11 4 4Z"/>',
+  ];
+  const btnStyle = (st) => {
+    const w = segValue('tb_border_width') | 0;
+    const r = $('tb_radius').value;
+    if (st === 'normal') return `border-width:${w}px;border-radius:${r}px`;
+    const bg = colors[`${st}_background`] || 'transparent';
+    const bd = (w && colors[`${st}_border`]) || 'transparent';
+    return `background:${bg};border-color:${bd};border-width:${w}px;border-radius:${r}px`;
+  };
+  const btn = (st, i) => `<div class="btn" style="${btnStyle(st)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[i]}</svg></div>`;
+  const sep = () => {
+    const i = $('separator_inset').value;
+    return `<div class="sep" style="background:${colors.separator_color || 'transparent'};background-clip:content-box;padding:${i}px 2px ${i}px 3px"></div>`;
+  };
+  const preview = () => {
+    $('preview').innerHTML = ['normal', ...STATES].map((st, i) =>
+      `<figure>${btn(st, i)}<figcaption>${st}</figcaption></figure>`).join('');
+    const bg = colors.bar_background, bd = colors.bar_border;
+    const bw = bd ? (segValue('bar_border_width') | 0) || 1 : 1;
+    const pad = Math.max($('bar_padding').value | 0, bw) - bw;
+    const barStyle = `background:${bg || 'transparent'};border:${bw}px solid ${bd || 'transparent'};padding:${pad}px ${pad}px ${pad}px ${pad + 9}px;border-radius:${(bg || bd) ? $('bar_radius').value : 0}px`;
+    $('bar_preview').style.background = colors.area_background || '';
+    $('bar_preview').innerHTML = `<div class="bar" style="${barStyle}">${btn('normal', 0)}${sep()}${btn('checked', 1)}${btn('normal', 2)}${sep()}${btn('normal', 3)}</div>`;
+  };
+
+  const refresh = () => {
+    $('all').disabled = !$('enabled').checked;
+    $('tb').disabled = !$('tb_enabled').checked;
+    $('titles_row').style.display = segValue('tb_scope') === 'titles' ? '' : 'none';
+    ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset'].forEach((id) => { $(`${id}_v`).textContent = `${$(id).value} px`; });
+    preview();
+  };
+
+  const fill = (t) => {
+    const tb = t.toolbar;
+    $('enabled').checked = !!t.enabled;
+    $('tb_enabled').checked = !!tb.enabled;
+    setSeg('tb_scope', tb.scope);
+    $('tb_titles').value = (tb.titles || []).join(', ');
+    $('tb_radius').value = tb.radius;
+    setSeg('tb_border_width', tb.border_width);
+    STATES.forEach((st) => KEYS.forEach((k) => setColor(`${st}_${k}`, hex((tb[st] || {})[k]))));
+    const bar = tb.bar || {}, sp = tb.separator || {};
+    setColor('bar_background', hex(bar.background));
+    setColor('bar_border', hex(bar.border));
+    setSeg('bar_border_width', bar.border_width);
+    $('bar_radius').value = bar.radius;
+    $('bar_padding').value = bar.padding;
+    setColor('separator_color', hex(sp.color));
+    setColor('area_background', hex((tb.area || {}).background));
+    $('separator_inset').value = sp.inset;
+    $('extra_qss').value = t.extra_qss || '';
+    refresh();
+  };
+
+  const collect = () => {
+    const tb = {
+      enabled: $('tb_enabled').checked,
+      scope: segValue('tb_scope') || 'all',
+      titles: $('tb_titles').value.split(',').map((s) => s.trim()).filter(Boolean),
+      radius: parseInt($('tb_radius').value, 10) || 0,
+      border_width: parseInt(segValue('tb_border_width'), 10) || 0,
+      bar: {
+        background: colors.bar_background || '',
+        border: colors.bar_border || '',
+        border_width: parseInt(segValue('bar_border_width'), 10) || 1,
+        radius: parseInt($('bar_radius').value, 10) || 0,
+        padding: parseInt($('bar_padding').value, 10) || 2,
+      },
+      area: { background: colors.area_background || '' },
+      separator: {
+        color: colors.separator_color || '',
+        inset: parseInt($('separator_inset').value, 10) || 0,
+      },
+    };
+    STATES.forEach((st) => {
+      tb[st] = {};
+      KEYS.forEach((k) => { tb[st][k] = colors[`${st}_${k}`] || ''; });
+    });
+    return { enabled: $('enabled').checked, toolbar: tb, extra_qss: $('extra_qss').value };
+  };
+
+  const commit = () => {
+    refresh();
+    sketchup.change(JSON.stringify(collect()));
+  };
+
+  // Ruby -> JS
+  window.receive = (state) => {
+    if (state.reload) fill(state.theme);
+    $('qss').value = state.qss || '/* nothing applied */';
+    const s = $('status');
+    const msg = state.supported ? (state.status || 'Ready') : 'Unsupported here: only validated on SketchUp 2027 for macOS.';
+    s.textContent = msg;
+    s.className = (!state.supported || /not|Unsupported/.test(msg)) ? 'warn' : (state.status ? '' : 'idle');
+  };
+
+  // JS -> Ruby : commit on 'change' (field left, switch flipped, slider released), not on every keystroke.
+  ['enabled', 'tb_enabled', 'tb_titles', 'tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'extra_qss'].forEach((id) => $(id).addEventListener('change', commit));
+  ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset'].forEach((id) => $(id).addEventListener('input', refresh));
+  $('reset').addEventListener('click', () => sketchup.reset());
+  $('native').addEventListener('click', () => sketchup.restore_native());
+
+  window.addEventListener('load', () => sketchup.ready());
+</script>
+</body>
+</html>
