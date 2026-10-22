@@ -9,6 +9,7 @@
 
 require 'json'
 require_relative 'qt'
+require_relative 'macos'
 require_relative 'theme'
 require_relative 'dialog'
 
@@ -17,6 +18,7 @@ module Ladb
 
     PREFS_SECTION = 'ladb_styler'
     PREFS_KEY_THEME = 'theme'
+    ASSETS_DIR = File.join(Sketchup.temp_dir, 'ladb_styler') # files the style sheet refers to (Theme.assets)
 
     # read_default evals the stored value, and write_default wraps a string in quotes
     # without escaping it: any `"` in the JSON breaks the eval. The JSON is therefore
@@ -34,15 +36,29 @@ module Ladb
     end
 
     def self.qss(theme = self.theme)
-      Theme.to_qss(theme)
+      Theme.to_qss(theme, ASSETS_DIR)
     end
 
-    # Returns :ok, :cleared, :unsupported or :foreign (see Qt.set_style_sheet).
+    # Written on every apply : the temp dir may have been cleaned since.
+    def self.write_assets(theme)
+      assets = Theme.assets(theme)
+      return if assets.empty?
+      Dir.mkdir(ASSETS_DIR) unless File.directory?(ASSETS_DIR)
+      assets.each { |name, content| File.write(File.join(ASSETS_DIR, name), content) }
+    end
+
+    # Returns :ok, :cleared, :unsupported, :no_window or :foreign (see Qt.set_style_sheet).
+    # The title bar is independent of the style sheet : applied even when :foreign.
     def self.apply(theme = self.theme)
-      Qt.set_style_sheet(qss(theme))
+      theme = Theme.normalize(theme)
+      write_assets(theme)
+      status = Qt.set_style_sheet(qss(theme))
+      MacOS.set_title_bar_color(theme['enabled'] && theme['window']['enabled'] ? theme['window']['title_bar'] : nil)
+      status
     end
 
     def self.clear
+      MacOS.clear
       Qt.clear
     end
 
@@ -52,6 +68,7 @@ module Ladb
       when :cleared then 'Native style restored.'
       when :unsupported then 'Unsupported here: only validated on SketchUp 2027 for macOS.'
       when :foreign then 'Another extension already set a Qt style sheet: not overwritten.'
+      when :no_window then 'SketchUp main window not found.'
       else status.to_s
       end
     end

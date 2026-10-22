@@ -47,7 +47,7 @@ module Ladb
         theme ||= Styler.theme
         state = {
           theme: theme,
-          qss: Theme.to_qss(theme),
+          qss: Styler.qss(theme),
           status: status && Styler.status_message(status),
           supported: Qt.supported?,
           reload: reload || status.nil?,

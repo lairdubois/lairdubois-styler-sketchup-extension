@@ -65,6 +65,8 @@
 
   .card { background: var(--card); border-radius: 10px; box-shadow: var(--shadow); margin-bottom: 12px; }
   .card > .head { display: flex; align-items: center; gap: 8px; padding: 11px 14px; }
+  details.card > summary.head { cursor: pointer; list-style: none; }
+  details.card > summary.head::-webkit-details-marker { display: none; }
   .card > .head h2 { font-size: 13px; font-weight: 600; margin: 0; flex: 1; }
   .card > .body { padding: 2px 14px 12px; }
   .card > .head + .body { border-top: 1px solid var(--line); padding-top: 10px; }
@@ -115,7 +117,7 @@
     -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
     background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .3); cursor: pointer;
   }
-  .value { width: 34px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .value { width: 34px; white-space: nowrap; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* ----- Color swatches : a native color input stretched over the swatch */
 
@@ -143,6 +145,13 @@
   }
   .swatch .clear:hover { color: var(--fg); background: var(--field); }
   .swatch.off .clear { visibility: hidden; }
+  /* 'none' (transparent) : a checkerboard, offered only where unset means native */
+  .swatch.none .chip {
+    background: repeating-conic-gradient(var(--field) 0 25%, var(--card) 0 50%) 0 0 / 8px 8px;
+  }
+  .swatch .nil { width: 16px; height: 16px; border: 0; border-radius: 50%; padding: 0; cursor: pointer; background: none; color: var(--faint); font-size: 12px; line-height: 16px; }
+  .swatch .nil:hover { color: var(--fg); background: var(--field); }
+  .swatch.none .nil { visibility: hidden; }
 
   /* ----- Toolbar preview : always light, like the toolbars whose colors are being set */
 
@@ -160,6 +169,40 @@
   .preview svg { width: 20px; height: 20px; }
   .preview .bar { display: flex; align-items: center; padding: 1px 1px 1px 11px; border: 1px solid transparent; }
   .preview .sep { width: 6px; height: 32px; }
+
+  /* Document tabs preview : native colors measured on SketchUp 2027 */
+  .preview.tabs { justify-content: flex-start; align-items: flex-end; gap: 0; padding: 10px 10px 0; background: #f1f1f6; }
+  .preview .tab {
+    width: 96px; height: 28px; display: grid; place-items: center; font-size: 12px; color: #464b52;
+    background: #e0e1e9; border: 1px solid #9a9ea8; border-bottom: 0; border-radius: 5px 5px 0 0; margin-right: -1px;
+  }
+  .preview .tab.selected { background: #ffffff; font-weight: 600; }
+  .preview .tab.selected { display: flex; justify-content: center; gap: 6px; align-items: center; }
+  .preview .x { width: 20px; height: 20px; display: grid; place-items: center; box-sizing: border-box; }
+  .preview .x svg { width: 100%; height: 100%; }
+  .preview .x.native span { width: 11px; height: 11px; border: 1px solid #6a6e79; border-radius: 2px; font-size: 10px; line-height: 10px; text-align: center; color: #6a6e79; font-weight: 400; }
+  .preview .tab.styled { border-color: transparent; border-radius: 0; }
+  .preview .plus {
+    width: 25px; height: 25px; margin: 0 0 3px 4px; display: grid; place-items: center; font-size: 13px; line-height: 1; color: #1d1d1f;
+    background: #ffffff; border: 1px solid #a8a8ae; border-radius: 4px; cursor: default;
+  }
+
+  /* Scene tabs preview : native colors measured on SketchUp 2027 */
+  .preview.scenes { justify-content: flex-start; align-items: flex-end; gap: 0; padding: 10px 10px 0; background: #f2f2f2; }
+  .preview.scenes .strip { display: flex; align-items: flex-end; gap: 0; flex: 1; padding-top: 5px; border-bottom: 1px solid #acacb0; }
+  .preview .stab {
+    height: 26px; padding: 0 9px; display: grid; place-items: center; font-size: 12px; color: #464b52;
+    background: #e0e1e9; border: 1px solid #9a9ea8; border-bottom: 0; border-radius: 5px 5px 0 0; margin-right: -1px;
+  }
+  .preview .stab.selected { background: #ffffff; }
+  .preview .stab.styled { border-color: transparent; border-radius: 0; margin-right: 0; }
+  .preview .sbtn {
+    height: 25px; display: grid; place-items: center; font-size: 13px; line-height: 1; color: #1d1d1f; box-sizing: border-box;
+    background: #ffffff; border: 1px solid #a8a8ae; border-radius: 4px; cursor: default; margin-bottom: 1px;
+  }
+  .preview .sbtn.search { width: 38px; height: 31px; margin-right: 1px; }
+  .preview .sbtn.search svg { width: 18px; height: 18px; }
+  .preview .sbtn.add { width: 27px; height: 27px; }
 
   .sub { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 2px; }
 
@@ -217,11 +260,11 @@
 
   <fieldset id="all">
 
-    <section class="card">
-      <div class="head">
+    <details class="card" data-card="toolbars">
+      <summary class="head">
         <h2>Toolbars</h2>
         <input type="checkbox" class="switch" id="tb_enabled" title="Style toolbars">
-      </div>
+      </summary>
       <div class="body">
         <fieldset id="tb">
 
@@ -301,9 +344,206 @@
 
         </fieldset>
       </div>
-    </section>
+    </details>
 
-    <details class="card">
+    <details class="card" data-card="tabs">
+      <summary class="head">
+        <h2>Document tabs</h2>
+        <input type="checkbox" class="switch" id="tabs_enabled" title="Style the document tabs">
+      </summary>
+      <div class="body">
+        <fieldset id="tabs_fs">
+        <div class="preview tabs" id="tabs_preview"></div>
+        <table class="states">
+          <thead><tr><th>Tab</th><th>Background</th><th>Text</th></tr></thead>
+          <tbody id="tab_states"></tbody>
+        </table>
+        <p class="hint">× native, ∅ none (transparent). A background replaces the native tab frame; size and centered title are kept.</p>
+        <div class="row">
+          <div class="label">Strip<small>behind the tabs</small></div>
+          <span data-swatch="tabs_strip" title="Strip behind the tabs"></span>
+        </div>
+        <div class="row">
+          <div class="label">Frame<small>around the 3D view; ∅ none, edge to edge</small></div>
+          <div class="segmented" id="frame_width">
+            <button type="button" data-v="1">1 px</button>
+            <button type="button" data-v="2">2 px</button>
+          </div>
+          <span data-swatch="frame_color" data-none title="Frame around the 3D view"></span>
+        </div>
+
+        <div class="sub">New tab button (+)</div>
+        <table class="states">
+          <thead><tr><th>State</th><th>Background</th><th>Border</th><th>Text</th></tr></thead>
+          <tbody id="plus_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Gap<small>between the last tab and the button</small></div>
+          <input type="range" id="plus_gap" min="0" max="16" step="1">
+          <span class="value" id="plus_gap_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Size<small>button box, native 27 px</small></div>
+          <input type="range" id="plus_size" min="17" max="29" step="1">
+          <span class="value" id="plus_size_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Glyph<small>size of the +, leftmost = native</small></div>
+          <input type="range" id="plus_font" min="9" max="20" step="1">
+          <span class="value" id="plus_font_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Corner radius<small>with a border color or ∅, which also drop the native background</small></div>
+          <input type="range" id="plus_radius" min="0" max="12" step="1">
+          <span class="value" id="plus_radius_v"></span>
+        </div>
+
+        <div class="sub">Close cross</div>
+        <div class="row">
+          <div class="label">Color<small>a plain cross; SketchUp's boxed cross when unset</small></div>
+          <span data-swatch="close_color" title="Cross color"></span>
+        </div>
+        <div class="row">
+          <div class="label">Size<small>of the cross, in its 20 px button</small></div>
+          <input type="range" id="close_size" min="6" max="18" step="1">
+          <span class="value" id="close_size_v"></span>
+        </div>
+        <table class="states">
+          <thead><tr><th>State</th><th>Background</th><th>Cross</th></tr></thead>
+          <tbody id="close_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Corner radius<small>of the hover / pressed background</small></div>
+          <input type="range" id="close_radius" min="0" max="10" step="1">
+          <span class="value" id="close_radius_v"></span>
+        </div>
+        <p class="hint">SketchUp only shows the cross on the active tab.</p>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="card" data-card="scenes">
+      <summary class="head">
+        <h2>Scene tabs</h2>
+        <input type="checkbox" class="switch" id="sc_enabled" title="Style the scene tabs">
+      </summary>
+      <div class="body">
+        <fieldset id="scenes_fs">
+        <div class="preview scenes" id="scenes_preview"></div>
+        <table class="states">
+          <thead><tr><th>Tab</th><th>Background</th><th>Text</th></tr></thead>
+          <tbody id="scene_states"></tbody>
+        </table>
+        <p class="hint">Below the document tabs, when the model has scenes. As for document tabs, a background replaces the native tab frame.</p>
+        <div class="row">
+          <div class="label">Strip<small>around the tabs; needs a frame color or ∅ (Document tabs), native frame keeps it white</small></div>
+          <span data-swatch="sc_strip" title="Strip around the scene tabs"></span>
+        </div>
+        <div class="row">
+          <div class="label">Line<small>under the strip</small></div>
+          <span data-swatch="sc_line" title="Line under the scene tabs"></span>
+        </div>
+        <div class="row">
+          <div class="label">Band height<small>native 33 px; the 3D view follows, the tabs keep their bottom</small></div>
+          <input type="range" id="sc_height" min="28" max="64" step="1">
+          <span class="value" id="sc_height_v"></span>
+        </div>
+
+        <div class="sub">Search button</div>
+        <table class="states">
+          <thead><tr><th>State</th><th>Background</th><th>Border</th></tr></thead>
+          <tbody id="sc_search_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Width<small>native 38 px; the tabs follow it</small></div>
+          <input type="range" id="sc_search_width" min="24" max="56" step="1">
+          <span class="value" id="sc_search_width_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Height<small>native 26 px, centered on the band; it shows with a background or a border, the icon keeps its size</small></div>
+          <input type="range" id="sc_search_height" min="18" max="32" step="1">
+          <span class="value" id="sc_search_height_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Corner radius<small>with a border color or ∅, which also drop the native background</small></div>
+          <input type="range" id="sc_search_radius" min="0" max="12" step="1">
+          <span class="value" id="sc_search_radius_v"></span>
+        </div>
+
+        <div class="sub">New scene button (+)</div>
+        <table class="states">
+          <thead><tr><th>State</th><th>Background</th><th>Border</th><th>Text</th></tr></thead>
+          <tbody id="sc_plus_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Gap<small>between the last tab and the +</small></div>
+          <input type="range" id="sc_plus_gap" min="0" max="16" step="1">
+          <span class="value" id="sc_plus_gap_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Size<small>+ box, native 27 px</small></div>
+          <input type="range" id="sc_plus_size" min="17" max="29" step="1">
+          <span class="value" id="sc_plus_size_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Glyph<small>size of the +, leftmost = native</small></div>
+          <input type="range" id="sc_plus_font" min="9" max="20" step="1">
+          <span class="value" id="sc_plus_font_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Corner radius<small>with a border color or ∅, which also drop the native background</small></div>
+          <input type="range" id="sc_plus_radius" min="0" max="12" step="1">
+          <span class="value" id="sc_plus_radius_v"></span>
+        </div>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="card" data-card="statusbar">
+      <summary class="head">
+        <h2>Status bar</h2>
+        <input type="checkbox" class="switch" id="sb_enabled" title="Style the status bar">
+      </summary>
+      <div class="body">
+        <fieldset id="statusbar_fs">
+        <div class="row">
+          <div class="label">Background<small>below the 3D view, native when unset</small></div>
+          <span data-swatch="sb_background" title="Status bar background"></span>
+        </div>
+        <div class="row">
+          <div class="label">Text<small>the help message</small></div>
+          <span data-swatch="sb_text" title="Status bar text"></span>
+        </div>
+        <table class="states">
+          <thead><tr><th>Buttons</th><th>Background</th><th>Border</th></tr></thead>
+          <tbody id="sb_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Corner radius<small>of the buttons' background</small></div>
+          <input type="range" id="sb_radius" min="0" max="10" step="1">
+          <span class="value" id="sb_radius_v"></span>
+        </div>
+        <p class="hint">The Measurements box and the separators stay native: no selector reaches them alone.</p>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="card" data-card="window">
+      <summary class="head">
+        <h2>Window</h2>
+        <input type="checkbox" class="switch" id="win_enabled" title="Color the title bar">
+      </summary>
+      <div class="body">
+        <fieldset id="window_fs">
+        <div class="row">
+          <div class="label">Title bar<small>main window, native when unset; title text light or dark to match</small></div>
+          <span data-swatch="title_bar" title="Title bar color"></span>
+        </div>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="card" data-card="extra">
       <summary>Extra QSS <span class="hint">appended as is</span></summary>
       <div class="body">
         <textarea id="extra_qss" rows="6" spellcheck="false" placeholder="QMenu { … }"></textarea>
@@ -313,7 +553,7 @@
 
   </fieldset>
 
-  <details class="card">
+  <details class="card" data-card="qss">
     <summary>Generated style sheet</summary>
     <div class="body">
       <textarea id="qss" rows="14" readonly spellcheck="false"></textarea>
@@ -331,30 +571,45 @@
 <script>
   const STATES = ['hover', 'checked', 'pressed'];
   const KEYS = ['background', 'border'];
+  const TAB_STATES = ['normal', 'hover', 'selected'];
+  const TAB_KEYS = ['background', 'text'];
+  const PLUS_STATES = ['normal', 'hover', 'pressed'];
+  const PLUS_KEYS = ['background', 'border', 'text'];
+  const CLOSE_STATES = ['hover', 'pressed'];
+  const CLOSE_KEYS = ['background', 'color'];
+  const SB_STATES = ['hover', 'pressed'];
+  const SB_KEYS = ['background', 'border'];
+  // [fieldset, switch] : each card can be turned off like the toolbars one.
+  const SECTIONS = [['tabs_fs', 'tabs_enabled'], ['scenes_fs', 'sc_enabled'], ['statusbar_fs', 'sb_enabled'], ['window_fs', 'win_enabled']];
   const $ = (id) => document.getElementById(id);
   const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
   // Color swatches, keyed by id : hex value, or '' when unset.
   const colors = {};
-  const swatchHtml = (key, title) =>
+  // none : also offer 'transparent' (no background / no border), for colors whose unset is native.
+  const swatchHtml = (key, title, none = false) =>
     `<span class="swatch off" id="${key}">` +
       `<span class="chip"><input type="color" title="${title}"></span>` +
-      `<button type="button" class="clear" title="Unset">×</button></span>`;
+      (none ? `<button type="button" class="nil" title="None (transparent)">∅</button>` : '') +
+      `<button type="button" class="clear" title="Unset (native)">×</button></span>`;
   const bindSwatch = (key) => {
     const sw = $(key);
     const input = sw.querySelector('input');
     input.addEventListener('input', () => { setColor(key, input.value); preview(); });
     input.addEventListener('change', () => commit());
     sw.querySelector('.clear').addEventListener('click', () => { setColor(key, ''); commit(); });
+    const nil = sw.querySelector('.nil');
+    if (nil) nil.addEventListener('click', () => { setColor(key, 'transparent'); commit(); });
   };
   const setColor = (key, v) => {
     colors[key] = v;
     const sw = $(key);
     sw.classList.toggle('off', !v);
+    sw.classList.toggle('none', v === 'transparent');
     sw.querySelector('.chip').style.setProperty('--c', v || 'transparent');
-    if (v) sw.querySelector('input').value = v;
+    if (v && v !== 'transparent') sw.querySelector('input').value = v;
   };
-  const hex = (v) => (/^#[0-9a-f]{6}$/i.test(v || '') ? v : '');
+  const hex = (v) => (/^(#[0-9a-f]{6}|transparent)$/i.test(v || '') ? v.toLowerCase() : '');
 
   const tbody = $('states');
   STATES.forEach((st) => {
@@ -363,16 +618,72 @@
     tbody.appendChild(tr);
     KEYS.forEach((k) => bindSwatch(`${st}_${k}`));
   });
+  TAB_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + TAB_KEYS.map((k) => `<td>${swatchHtml(`tab_${st}_${k}`, `${cap(st)} tab ${k}`, k === 'background')}</td>`).join('');
+    $('tab_states').appendChild(tr);
+    TAB_KEYS.forEach((k) => bindSwatch(`tab_${st}_${k}`));
+  });
+  PLUS_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + PLUS_KEYS.map((k) => `<td>${swatchHtml(`plus_${st}_${k}`, `${cap(st)} + ${k}`, k !== 'text')}</td>`).join('');
+    $('plus_states').appendChild(tr);
+    PLUS_KEYS.forEach((k) => bindSwatch(`plus_${st}_${k}`));
+  });
+  CLOSE_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + CLOSE_KEYS.map((k) => `<td>${swatchHtml(`close_${st}_${k}`, `${cap(st)} cross ${k}`)}</td>`).join('');
+    $('close_states').appendChild(tr);
+    CLOSE_KEYS.forEach((k) => bindSwatch(`close_${st}_${k}`));
+  });
+  TAB_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + TAB_KEYS.map((k) => `<td>${swatchHtml(`sc_${st}_${k}`, `${cap(st)} scene tab ${k}`, k === 'background')}</td>`).join('');
+    $('scene_states').appendChild(tr);
+    TAB_KEYS.forEach((k) => bindSwatch(`sc_${st}_${k}`));
+  });
+  // The search button's icon is a pixmap : background and border only.
+  [['sc_search', 'scene search button', KEYS], ['sc_plus', 'scene + button', PLUS_KEYS]].forEach(([prefix, title, keys]) => {
+    PLUS_STATES.forEach((st) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${cap(st)}</td>` + keys.map((k) => `<td>${swatchHtml(`${prefix}_${st}_${k}`, `${cap(st)} ${title} ${k}`, k !== 'text')}</td>`).join('');
+      $(`${prefix}_states`).appendChild(tr);
+      keys.forEach((k) => bindSwatch(`${prefix}_${st}_${k}`));
+    });
+  });
+  SB_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + SB_KEYS.map((k) => `<td>${swatchHtml(`sb_${st}_${k}`, `Status bar button ${st} ${k}`)}</td>`).join('');
+    $('sb_states').appendChild(tr);
+    SB_KEYS.forEach((k) => bindSwatch(`sb_${st}_${k}`));
+  });
   document.querySelectorAll('[data-swatch]').forEach((el) => {
     const key = el.dataset.swatch;
-    el.outerHTML = swatchHtml(key, el.title);
+    el.outerHTML = swatchHtml(key, el.title, 'none' in el.dataset);
     bindSwatch(key);
+  });
+
+  // Cards : fold state kept per card (browser storage only, absent in a fresh profile).
+  const FOLD_KEY = 'ladb_styler_cards';
+  const readFolds = () => { try { return JSON.parse(localStorage.getItem(FOLD_KEY)) || {}; } catch (e) { return {}; } };
+  const folds = readFolds();
+  // The open attribute, not the .open property : SketchUp's CEF reads that one back wrong.
+  const isOpen = (card) => card.hasAttribute('open');
+  document.querySelectorAll('[data-card]').forEach((card) => {
+    const id = card.dataset.card;
+    if (id in folds) card.toggleAttribute('open', !!folds[id]);
+    card.addEventListener('toggle', () => {
+      folds[id] = isOpen(card);
+      try { localStorage.setItem(FOLD_KEY, JSON.stringify(folds)); } catch (e) { /* private window, blocked storage */ }
+    });
+    // A switch in the summary toggles the setting, not the card.
+    card.querySelectorAll('summary .switch').forEach((sw) => sw.addEventListener('click', (e) => e.stopPropagation()));
   });
 
   // Segmented controls
   const segValue = (id) => ($(id).querySelector('.on') || {}).dataset?.v;
   const setSeg = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
-  ['tb_scope', 'tb_border_width', 'bar_border_width'].forEach((id) => $(id).addEventListener('click', (e) => {
+  ['tb_scope', 'tb_border_width', 'bar_border_width', 'frame_width'].forEach((id) => $(id).addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
     setSeg(id, b.dataset.v);
@@ -408,13 +719,126 @@
     const barStyle = `background:${bg || 'transparent'};border:${bw}px solid ${bd || 'transparent'};padding:${pad}px ${pad}px ${pad}px ${pad + 9}px;border-radius:${(bg || bd) ? $('bar_radius').value : 0}px`;
     $('bar_preview').style.background = colors.area_background || '';
     $('bar_preview').innerHTML = `<div class="bar" style="${barStyle}">${btn('normal', 0)}${sep()}${btn('checked', 1)}${btn('normal', 2)}${sep()}${btn('normal', 3)}</div>`;
+    // Tabs : selected wins over hover, a state without its own color falls back to normal (as in QSS).
+    const tab = (label, sts) => {
+      const pick = (k) => sts.reduce((v, st) => colors[`tab_${st}_${k}`] || v, '');
+      const bg = pick('background'), fg = pick('text');
+      const cls = ['tab', sts.includes('selected') ? 'selected' : '', bg ? 'styled' : ''].join(' ');
+      const x = sts.includes('selected') ? '<span class="x" id="close_preview"></span>' : '';
+      return `<div class="${cls}" style="${bg ? `background:${bg};` : ''}${fg ? `color:${fg}` : ''}">${label}${x}</div>`;
+    };
+    // Close cross : hovering / pressing it in the preview shows those states.
+    const closeRender = (sts) => {
+      const x = $('close_preview');
+      const pick = (k) => sts.reduce((v, st) => colors[`close_${st}_${k}`] || v, '');
+      const c = pick('color') || colors.close_color;
+      const bg = pick('background');
+      x.className = c ? 'x' : 'x native';
+      x.style.padding = c ? `${Math.floor((20 - ($('close_size').value | 0)) / 2)}px` : '';
+      x.style.background = bg || '';
+      x.style.borderRadius = bg ? `${$('close_radius').value}px` : '';
+      x.innerHTML = c ? `<svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/></svg>` : '<span>×</span>';
+    };
+    $('tabs_preview').style.background = colors.tabs_strip || '';
+    // '+' : normal state shown ; hovering the preview shows hover, pressing it pressed.
+    const plusStyle = (sts) => {
+      const pick = (k) => sts.reduce((v, st) => colors[`plus_${st}_${k}`] || v, '');
+      const bordered = PLUS_STATES.some((st) => colors[`plus_${st}_border`]);
+      let css = '';
+      // Qt drops the native background too once a border is set (measured).
+      if (pick('background') || bordered) css += `background:${pick('background') || 'transparent'};`;
+      if (bordered) css += `border-color:${pick('border') || 'transparent'};border-radius:${$('plus_radius').value}px;`;
+      if (pick('text')) css += `color:${pick('text')};`;
+      return css;
+    };
+    $('tabs_preview').innerHTML = tab('Model', ['normal', 'selected']) + tab('Hover', ['normal', 'hover']) + tab('Other', ['normal']) +
+      `<div class="plus" id="plus_preview" style="${plusStyle(['normal'])}">+</div>`;
+    closeRender([]);
+    const xp = $('close_preview');
+    xp.addEventListener('mouseenter', () => closeRender(['hover']));
+    xp.addEventListener('mouseleave', () => closeRender([]));
+    xp.addEventListener('mousedown', () => closeRender(['hover', 'pressed']));
+    xp.addEventListener('mouseup', () => closeRender(['hover']));
+    const pp = $('plus_preview');
+    // Box and glyph, centered on the native 27 px box like the generator does.
+    const box = () => {
+      const sz = $('plus_size').value | 0, f = $('plus_font').value | 0;
+      pp.style.marginLeft = `${4 + ($('plus_gap').value | 0)}px`;
+      pp.style.width = pp.style.height = `${sz - 2}px`;
+      pp.style.marginBottom = `${3 + Math.floor((27 - sz) / 2)}px`;
+      pp.style.fontSize = f > 9 ? `${f}px` : '';
+    };
+    box();
+    const set = (sts) => () => { pp.style.cssText = plusStyle(sts); box(); };
+    pp.addEventListener('mouseenter', set(['normal', 'hover']));
+    pp.addEventListener('mouseleave', set(['normal']));
+    pp.addEventListener('mousedown', set(['normal', 'hover', 'pressed']));
+    pp.addEventListener('mouseup', set(['normal', 'hover']));
+    scenesPreview();
+  };
+
+  // Same rules as the generator : a border on any state replaces the native frame and background.
+  const buttonStyle = (prefix, sts, radius) => {
+    const pick = (k) => sts.reduce((v, st) => colors[`${prefix}_${st}_${k}`] || v, '');
+    const bordered = PLUS_STATES.some((st) => colors[`${prefix}_${st}_border`]);
+    let css = '';
+    if (pick('background') || bordered) css += `background:${pick('background') || 'transparent'};`;
+    if (bordered) css += `border-color:${pick('border') || 'transparent'};border-radius:${radius}px;`;
+    if (pick('text')) css += `color:${pick('text')};`;
+    return css;
+  };
+  const scenesPreview = () => {
+    const tab = (label, sts) => {
+      const pick = (k) => sts.reduce((v, st) => colors[`sc_${st}_${k}`] || v, '');
+      const bg = pick('background'), fg = pick('text');
+      const cls = ['stab', sts.includes('selected') ? 'selected' : '', bg ? 'styled' : ''].join(' ');
+      return `<div class="${cls}" style="${bg ? `background:${bg};` : ''}${fg ? `color:${fg}` : ''}">${label}</div>`;
+    };
+    // The strip is the frame's background : the document strip with no frame, white over the native frame.
+    const frame = colors.frame_color;
+    const strip = frame ? (colors.sc_strip || (frame === 'transparent' ? colors.tabs_strip : '') || '#f2f2f2') : '#ffffff';
+    const p = $('scenes_preview');
+    p.style.background = strip;
+    p.style.paddingTop = `${10 + (($('sc_height').value | 0) - 33)}px`;
+    const lens = '<svg viewBox="0 0 24 24" fill="none" stroke="#1f5d99" stroke-width="2" stroke-linecap="round"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>';
+    p.innerHTML = `<div class="strip" style="${colors.sc_line ? `border-bottom-color:${colors.sc_line}` : ''}">` +
+      `<div class="sbtn search">${lens}</div>` + tab('Scene 1', ['normal', 'selected']) + tab('Hover', ['normal', 'hover']) + tab('Scene 3', ['normal']) +
+      '<div class="sbtn add">+</div></div>';
+    // Each box is pinned : the '+' bottom stays on the tab line, the search button is centered (as in QSS).
+    const boxes = {
+      sc_plus: (b) => {
+        const sz = $('sc_plus_size').value | 0, f = $('sc_plus_font').value | 0;
+        b.style.width = b.style.height = `${sz}px`;
+        b.style.marginLeft = `${$('sc_plus_gap').value | 0}px`;
+        // Centered on the native 27 px box, as the generator's margin-bottom does.
+        b.style.marginBottom = `${1 + Math.max(Math.ceil((27 - sz) / 2), 0)}px`;
+        b.style.fontSize = f > 9 ? `${f}px` : '';
+      },
+      sc_search: (b) => {
+        const hgt = $('sc_search_height').value | 0;
+        b.style.width = `${$('sc_search_width').value | 0}px`;
+        b.style.height = `${hgt}px`;
+        b.style.marginBottom = `${1 + Math.floor((32 - hgt) / 2)}px`;
+      },
+    };
+    p.querySelectorAll('.sbtn').forEach((b) => {
+      const prefix = b.classList.contains('add') ? 'sc_plus' : 'sc_search';
+      const set = (sts) => () => { b.style.cssText = buttonStyle(prefix, sts, $(`${prefix}_radius`).value); boxes[prefix](b); };
+      set(['normal'])();
+      b.addEventListener('mouseenter', set(['normal', 'hover']));
+      b.addEventListener('mouseleave', set(['normal']));
+      b.addEventListener('mousedown', set(['normal', 'hover', 'pressed']));
+      b.addEventListener('mouseup', set(['normal', 'hover']));
+    });
   };
 
   const refresh = () => {
     $('all').disabled = !$('enabled').checked;
     $('tb').disabled = !$('tb_enabled').checked;
+    SECTIONS.forEach(([fs, sw]) => { $(fs).disabled = !$(sw).checked; });
     $('titles_row').style.display = segValue('tb_scope') === 'titles' ? '' : 'none';
-    ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset'].forEach((id) => { $(`${id}_v`).textContent = `${$(id).value} px`; });
+    ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_radius', 'sb_radius'].forEach((id) => { $(`${id}_v`).textContent = `${$(id).value} px`; });
+    ['plus_font', 'sc_plus_font'].forEach((id) => { $(`${id}_v`).textContent = ($(id).value | 0) > 9 ? `${$(id).value} px` : 'native'; });
     preview();
   };
 
@@ -436,6 +860,49 @@
     setColor('separator_color', hex(sp.color));
     setColor('area_background', hex((tb.area || {}).background));
     $('separator_inset').value = sp.inset;
+    const tabs = t.tabs || {};
+    $('tabs_enabled').checked = tabs.enabled !== false;
+    TAB_STATES.forEach((st) => TAB_KEYS.forEach((k) => setColor(`tab_${st}_${k}`, hex((tabs[st] || {})[k]))));
+    setColor('tabs_strip', hex(tabs.strip));
+    setColor('frame_color', hex((tabs.frame || {}).color));
+    setSeg('frame_width', (tabs.frame || {}).width || 1);
+    const plus = tabs.plus || {};
+    PLUS_STATES.forEach((st) => PLUS_KEYS.forEach((k) => setColor(`plus_${st}_${k}`, hex((plus[st] || {})[k]))));
+    $('plus_radius').value = plus.radius ?? 4;
+    $('plus_gap').value = plus.gap ?? 7;
+    $('plus_size').value = plus.size ?? 22;
+    $('plus_font').value = plus.font_size > 9 ? plus.font_size : 9;
+    const close = tabs.close || {};
+    setColor('close_color', hex(close.color));
+    CLOSE_STATES.forEach((st) => CLOSE_KEYS.forEach((k) => setColor(`close_${st}_${k}`, hex((close[st] || {})[k]))));
+    $('close_size').value = close.size ?? 10;
+    $('close_radius').value = close.radius ?? 4;
+    const sc = t.scenes || {};
+    $('sc_enabled').checked = sc.enabled !== false;
+    TAB_STATES.forEach((st) => TAB_KEYS.forEach((k) => setColor(`sc_${st}_${k}`, hex((sc[st] || {})[k]))));
+    setColor('sc_strip', hex(sc.strip));
+    setColor('sc_line', hex(sc.line));
+    $('sc_height').value = sc.height ?? 28;
+    const scp = sc.plus || {}, scs = sc.search || {};
+    PLUS_STATES.forEach((st) => {
+      PLUS_KEYS.forEach((k) => setColor(`sc_plus_${st}_${k}`, hex((scp[st] || {})[k])));
+      KEYS.forEach((k) => setColor(`sc_search_${st}_${k}`, hex((scs[st] || {})[k])));
+    });
+    $('sc_plus_radius').value = scp.radius ?? 4;
+    $('sc_plus_gap').value = scp.gap ?? 0;
+    $('sc_plus_size').value = scp.size ?? 22;
+    $('sc_plus_font').value = scp.font_size > 9 ? scp.font_size : 9;
+    $('sc_search_radius').value = scs.radius ?? 4;
+    $('sc_search_width').value = scs.width ?? 31;
+    $('sc_search_height').value = scs.height ?? 28;
+    const sb = t.statusbar || {};
+    $('sb_enabled').checked = sb.enabled !== false;
+    setColor('sb_background', hex(sb.background));
+    setColor('sb_text', hex(sb.text));
+    SB_STATES.forEach((st) => SB_KEYS.forEach((k) => setColor(`sb_${st}_${k}`, hex((sb[st] || {})[k]))));
+    $('sb_radius').value = sb.radius ?? 4;
+    $('win_enabled').checked = (t.window || {}).enabled !== false;
+    setColor('title_bar', hex((t.window || {}).title_bar));
     $('extra_qss').value = t.extra_qss || '';
     refresh();
   };
@@ -464,7 +931,53 @@
       tb[st] = {};
       KEYS.forEach((k) => { tb[st][k] = colors[`${st}_${k}`] || ''; });
     });
-    return { enabled: $('enabled').checked, toolbar: tb, extra_qss: $('extra_qss').value };
+    const plus = { radius: parseInt($('plus_radius').value, 10) || 0, gap: parseInt($('plus_gap').value, 10) || 0,
+      size: parseInt($('plus_size').value, 10) || 27, font_size: ($('plus_font').value | 0) > 9 ? $('plus_font').value | 0 : 0 };
+    PLUS_STATES.forEach((st) => {
+      plus[st] = {};
+      PLUS_KEYS.forEach((k) => { plus[st][k] = colors[`plus_${st}_${k}`] || ''; });
+    });
+    const close = {
+      color: colors.close_color || '',
+      size: parseInt($('close_size').value, 10) || 10,
+      radius: parseInt($('close_radius').value, 10) || 0,
+    };
+    CLOSE_STATES.forEach((st) => {
+      close[st] = {};
+      CLOSE_KEYS.forEach((k) => { close[st][k] = colors[`close_${st}_${k}`] || ''; });
+    });
+    const frame = { color: colors.frame_color || '', width: parseInt(segValue('frame_width'), 10) || 1 };
+    const tabs = { enabled: $('tabs_enabled').checked, strip: colors.tabs_strip || '', frame, plus, close };
+    TAB_STATES.forEach((st) => {
+      tabs[st] = {};
+      TAB_KEYS.forEach((k) => { tabs[st][k] = colors[`tab_${st}_${k}`] || ''; });
+    });
+    const scenes = {
+      enabled: $('sc_enabled').checked,
+      strip: colors.sc_strip || '',
+      line: colors.sc_line || '',
+      height: parseInt($('sc_height').value, 10) || 33,
+      plus: { radius: parseInt($('sc_plus_radius').value, 10) || 0, gap: parseInt($('sc_plus_gap').value, 10) || 0,
+        size: parseInt($('sc_plus_size').value, 10) || 27, font_size: ($('sc_plus_font').value | 0) > 9 ? $('sc_plus_font').value | 0 : 0 },
+      search: { radius: parseInt($('sc_search_radius').value, 10) || 0,
+        width: parseInt($('sc_search_width').value, 10) || 38, height: parseInt($('sc_search_height').value, 10) || 26 },
+    };
+    TAB_STATES.forEach((st) => {
+      scenes[st] = {};
+      TAB_KEYS.forEach((k) => { scenes[st][k] = colors[`sc_${st}_${k}`] || ''; });
+    });
+    PLUS_STATES.forEach((st) => {
+      scenes.plus[st] = {};
+      scenes.search[st] = {};
+      PLUS_KEYS.forEach((k) => { scenes.plus[st][k] = colors[`sc_plus_${st}_${k}`] || ''; });
+      KEYS.forEach((k) => { scenes.search[st][k] = colors[`sc_search_${st}_${k}`] || ''; });
+    });
+    const statusbar = { enabled: $('sb_enabled').checked, background: colors.sb_background || '', text: colors.sb_text || '', radius: parseInt($('sb_radius').value, 10) || 0 };
+    SB_STATES.forEach((st) => {
+      statusbar[st] = {};
+      SB_KEYS.forEach((k) => { statusbar[st][k] = colors[`sb_${st}_${k}`] || ''; });
+    });
+    return { enabled: $('enabled').checked, toolbar: tb, tabs, scenes, statusbar, window: { enabled: $('win_enabled').checked, title_bar: colors.title_bar || '' }, extra_qss: $('extra_qss').value };
   };
 
   const commit = () => {
@@ -483,8 +996,8 @@
   };
 
   // JS -> Ruby : commit on 'change' (field left, switch flipped, slider released), not on every keystroke.
-  ['enabled', 'tb_enabled', 'tb_titles', 'tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'extra_qss'].forEach((id) => $(id).addEventListener('change', commit));
-  ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset'].forEach((id) => $(id).addEventListener('input', refresh));
+  ['enabled', 'tb_enabled', 'tabs_enabled', 'sc_enabled', 'sb_enabled', 'win_enabled', 'tb_titles', 'tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'plus_font', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_font', 'sc_plus_radius', 'sb_radius', 'extra_qss'].forEach((id) => $(id).addEventListener('change', commit));
+  ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'plus_font', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_font', 'sc_plus_radius', 'sb_radius'].forEach((id) => $(id).addEventListener('input', refresh));
   $('reset').addEventListener('click', () => sketchup.reset());
   $('native').addEventListener('click', () => sketchup.restore_native());
 

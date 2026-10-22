@@ -6,6 +6,11 @@
 # so only the title bar takes the color. Floating panels have no Titled flag :
 # their title bar is drawn by Qt (KDDW).
 #
+# The title text follows the window appearance : DarkAqua on a dark color,
+# Aqua on a light one (even when macOS is dark), nil (inherit) once restored.
+# Qt follows the application appearance, not the window's : its palettes and
+# the window content do not change (measured).
+#
 # Leaving full screen, Qt resets titlebarAppearsTransparent (the background
 # color stays) : a Ruby timer re-applies it. No AppKit observer on purpose : it
 # would need a native callback, where a Ruby exception kills SketchUp.
@@ -23,6 +28,8 @@ module Ladb
       V = F::TYPE_VOIDP
 
       NS_WINDOW_STYLE_MASK_TITLED = 1
+      # WCAG : below this relative luminance, white text contrasts more than black.
+      DARK_LUMINANCE = 0.179
       WATCH_INTERVAL = 1.0 # seconds
 
       @fns = {}
@@ -65,8 +72,12 @@ module Ladb
         wins = _msg(_msg(_class('NSApplication'), 'sharedApplication'), 'windows')
         (0..._msg(wins, 'count')).map { |i| _msg(wins, 'objectAtIndex:', i) }.find do |w|
           (_msg_int(w, 'styleMask') & NS_WINDOW_STYLE_MASK_TITLED) != 0 &&
-            Qt.class_name_of_view(_msg(w, 'contentView')) == 'CMainFrame'
+            Qt.class_name_of_view(content_view(w)) == Qt::MAIN_FRAME_CLASS
         end
+      end
+
+      def self.content_view(window)
+        _msg(window, 'contentView')
       end
 
       # -----
@@ -85,11 +96,24 @@ module Ladb
                   .call(_class('NSColor'), _sel('colorWithSRGBRed:green:blue:alpha:'), r / 255.0, g / 255.0, b / 255.0, 1.0)
         _set_bool(window, 'setTitlebarAppearsTransparent:', true)
         _msg(window, 'setBackgroundColor:', color.to_i)
+        _msg(window, 'setAppearance:', _appearance(dark?(@color) ? 'NSAppearanceNameDarkAqua' : 'NSAppearanceNameAqua'))
       end
 
       def self._restore(window)
         _set_bool(window, 'setTitlebarAppearsTransparent:', false)
         _msg(window, 'setBackgroundColor:', _msg(_class('NSColor'), 'windowBackgroundColor'))
+        _msg(window, 'setAppearance:', 0)
+      end
+
+      # [r, g, b] 0..255 -> true when light text reads better (sRGB relative luminance).
+      def self.dark?(rgb)
+        r, g, b = rgb.map { |c| c /= 255.0; c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055)**2.4 }
+        0.2126 * r + 0.7152 * g + 0.0722 * b < DARK_LUMINANCE
+      end
+
+      # name : an AppKit NSString constant (data symbol), e.g. 'NSAppearanceNameDarkAqua'.
+      def self._appearance(name)
+        _msg(_class('NSAppearance'), 'appearanceNamed:', F::Pointer.new(F::Handle::DEFAULT[name])[0, 8].unpack1('Q'))
       end
 
       def self._stop_timer
