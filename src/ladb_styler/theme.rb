@@ -123,6 +123,10 @@ module Ladb
       # font-size px -> top of the '+' widget (measured, box size has no effect) ; below 10 it would need a negative margin.
       PLUS_FONT_TOP = { 10 => 3, 11 => 3, 12 => 2, 13 => 2, 14 => 1, 15 => 1, 16 => 1, 17 => 0, 18 => 0, 19 => -1, 20 => -1 }.freeze
 
+      # Palette roles the style paints bevels with, set to one color : SketchUp gives them all
+      # #e0e1e9, and as soon as light and dark differ the panels show a gradient (measured).
+      LINE_ROLES = %w[light midlight mid dark shadow].freeze
+
       DEFAULTS = {
         'enabled' => true,
         'toolbar' => {
@@ -200,9 +204,45 @@ module Ladb
           'hover' => { 'background' => '', 'border' => '' },
           'pressed' => { 'background' => '', 'border' => '' },
         },
+        'scrollbars' => {       # every QScrollBar below the main window (panels, lists, fields)
+          'enabled' => true,
+          'width' => 10,        # thickness, 6..16 px (14 = native, measured)
+          'radius' => 3,        # of the handle, 0..8 px, clamped to half its thickness
+          'track' => '#f2f2f2', # '' = none
+          'normal' => '#c2c2c2', # handle ; '' = palette(mid)
+          'hover' => '#3e7ab6', # '' = as normal
+          'pressed' => '',      # '' = as hover
+        },
+        'messagebox' => {       # QMessageBox (UI.messagebox…) : macOS alert look ; '' = native
+          'enabled' => true,
+          'background' => '#ececec',
+          'text' => '#1d1d1f',
+          'radius' => 5,        # of the buttons, 0..10 px
+          'center' => true,     # text and buttons centered
+          'hide_icon' => true,  # the icon column shrinks to its spacing (MESSAGE_BOX_ICON_GAP)
+          'button' => {         # every button ; no hover, as on macOS
+            'normal' => { 'background' => '#ffffff', 'text' => '#1d1d1f', 'border' => '#c4c4c4' },
+            'hover' => { 'background' => '', 'text' => '', 'border' => '' },
+            'pressed' => { 'background' => '#dcdcdc', 'text' => '', 'border' => '' },
+          },
+          'default' => {        # the one Return triggers : the macOS accent blue
+            'normal' => { 'background' => '#007aff', 'text' => '#ffffff', 'border' => '#006ae0' },
+            'hover' => { 'background' => '', 'text' => '', 'border' => '' },
+            'pressed' => { 'background' => '#0062cc', 'text' => '', 'border' => '' },
+          },
+        },
         'window' => {
           'enabled' => true,
           'title_bar' => '#1e4069', # '#rrggbb' main window title bar (AppKit, see macos.rb) ; '' = native
+        },
+        'palette' => {          # application palette roles (Qt::ROLES names, see qt.rb) ; '' = SketchUp's
+          'enabled' => false,   # experimental, off by default : these values match the light defaults above
+          'window' => '#f2f2f2', 'window_text' => '#000000',
+          'base' => '#ffffff', 'alternate_base' => '#f7f7f7', 'text' => '#000000', 'placeholder_text' => '#8c8c8c',
+          'button' => '#ffffff', 'button_text' => '#000000',
+          'highlight' => '#3e7ab6', 'highlighted_text' => '#ffffff',
+          'lines' => '#cfcfcf', # every bevel role (LINE_ROLES) : distinct ones paint gradients on the panels
+          'gradient' => '',     # light end of the panel gradient (the light role) ; '' = flat, lines everywhere
         },
         'extra_qss' => '',
       }.freeze
@@ -211,9 +251,12 @@ module Ladb
         JSON.parse(JSON.generate(DEFAULTS))
       end
 
-      # Missing keys (older saved theme) fall back to defaults.
+      # Missing keys (older saved theme) fall back to defaults ; the separate bevel colors
+      # (before 'lines') are dropped.
       def self.normalize(theme)
-        _deep_merge(defaults, theme.is_a?(Hash) ? theme : {})
+        theme = _deep_merge(defaults, theme.is_a?(Hash) ? theme : {})
+        LINE_ROLES.each { |role| theme['palette'].delete(role) }
+        theme
       end
 
       # assets_dir : where the caller writes #assets (the close cross SVG files).
@@ -221,7 +264,19 @@ module Ladb
         theme = normalize(theme)
         return '' unless theme['enabled']
         [_toolbar_qss(theme['toolbar']), _tabs_qss(theme['tabs'], assets_dir, theme['scenes']['enabled'] ? theme['scenes']['strip'] : ''), _scenes_qss(theme['scenes']),
-         _statusbar_qss(theme['statusbar']), theme['extra_qss'].to_s.strip].reject(&:empty?).join("\n\n")
+         _statusbar_qss(theme['statusbar']), _scrollbars_qss(theme['scrollbars']), _messagebox_qss(theme['messagebox']), theme['extra_qss'].to_s.strip].reject(&:empty?).join("\n\n")
+      end
+
+      # { role => '#rrggbb' } for Qt.set_palette ; empty when off (SketchUp's palette).
+      def self.palette(theme)
+        theme = normalize(theme)
+        pal = theme['palette']
+        return {} unless theme['enabled'] && pal['enabled']
+        lines = _hex(pal['lines'])
+        gradient = _hex(pal['gradient'])
+        pal.filter_map { |role, c| (c = _hex(c)) && !%w[lines gradient].include?(role) && [role, c] }.to_h
+           .merge(lines ? LINE_ROLES.to_h { |role| [role, lines] } : {})
+           .merge(gradient ? { 'light' => gradient } : {})
       end
 
       # { file name => SVG } the style sheet refers to (close cross colors).
@@ -401,6 +456,84 @@ module Ladb
           css << "#{STATUS_BAR} QToolButton:#{st} {\n  #{decl.join("\n  ")}\n}"
         end
         css[0] = "/* Status bar */\n#{css[0]}" unless css.empty?
+        css.join("\n\n")
+      end
+
+      SCROLLBAR_MARGIN = 2 # px around the handle
+
+      # One rule on QScrollBar hands the whole widget to the style sheet : the track, the
+      # handle and the arrows (hidden, zero size) are all set, never left to Fusion.
+      def self._scrollbars_qss(sb)
+        return '' unless sb.is_a?(Hash) && sb['enabled']
+        width = sb['width'].to_i.clamp(6, 16)
+        radius = sb['radius'].to_i.clamp(0, width / 2 - SCROLLBAR_MARGIN)
+        track = _color(sb['track']) || 'transparent'
+        normal = _color(sb['normal']) || 'palette(mid)'
+        hover = _color(sb['hover']) || normal
+        pressed = _color(sb['pressed']) || hover
+        css = []
+        { 'vertical' => %w[width min-height], 'horizontal' => %w[height min-width] }.each do |o, (extent, min)|
+          css << "QScrollBar:#{o} {\n  background-color: #{track};\n  #{extent}: #{width}px;\n  margin: 0;\n  border: none;\n}"
+          css << "QScrollBar::handle:#{o} {\n  background-color: #{normal};\n  #{min}: 24px;\n  border-radius: #{radius}px;\n  margin: #{SCROLLBAR_MARGIN}px;\n}"
+        end
+        css << "QScrollBar::handle:hover {\n  background-color: #{hover};\n}"
+        css << "QScrollBar::handle:pressed {\n  background-color: #{pressed};\n}"
+        css << "QScrollBar::add-line,\nQScrollBar::sub-line {\n  width: 0;\n  height: 0;\n  border: none;\n  background: none;\n}"
+        css << "QScrollBar::add-page,\nQScrollBar::sub-page {\n  background: none;\n}"
+        css[0] = "/* Scrollbars */\n#{css[0]}"
+        css.join("\n\n")
+      end
+
+      MESSAGE_BOX = 'QMessageBox'
+      MESSAGE_BOX_BUTTON = 'QMessageBox QPushButton'
+      # What a hidden icon leaves on the left : the 7 px indent column and two grid spacings
+      # (estimated, balanced by eye on 2026-10-22).
+      MESSAGE_BOX_ICON_GAP = 19
+
+      # A QPushButton background only shows with a border (the native frame covers it,
+      # measured) : a styled button always gets one, transparent when unset.
+      def self._messagebox_qss(mb)
+        return '' unless mb.is_a?(Hash) && mb['enabled']
+        css = []
+        bg = _color(mb['background'])
+        fg = _color(mb['text'])
+        css << "#{MESSAGE_BOX} {\n  background-color: #{bg};\n}" if bg
+        css << "#{MESSAGE_BOX} QLabel {\n  color: #{fg};\n}" if fg
+        # Layout through Qt properties of the widgets themselves (never on a sub-control).
+        # The buttons stay side by side : stacked, the button box keeps a fixed width and
+        # sits on the left of a wider text (measured).
+        if mb['hide_icon']
+          css << "#{MESSAGE_BOX} QLabel#qt_msgboxex_icon_label {\n  min-width: 0;\n  max-width: 0;\n  min-height: 0;\n  max-height: 0;\n  margin: 0;\n  padding: 0;\n}"
+        end
+        if mb['center']
+          css << "#{MESSAGE_BOX} QDialogButtonBox {\n  qproperty-centerButtons: true;\n}"
+          decl = ['qproperty-alignment: AlignCenter;']
+          decl << "margin-right: #{MESSAGE_BOX_ICON_GAP}px;" if mb['hide_icon'] # the button box ignores a margin (measured)
+          css << "#{MESSAGE_BOX} QLabel#qt_msgbox_label {\n  #{decl.join("\n  ")}\n}"
+        end
+        radius = mb['radius'].to_i.clamp(0, 10)
+        { '' => mb['button'], ':default' => mb['default'] }.each do |pseudo, b|
+          b = b.is_a?(Hash) ? b : {}
+          %w[normal hover pressed].each do |st|
+            h = b[st].is_a?(Hash) ? b[st] : {}
+            decl = []
+            c = _color(h['background'])
+            decl << "background-color: #{c};" if c
+            c = _color(h['text'])
+            decl << "color: #{c};" if c
+            bd = _color(h['border'])
+            if st == 'normal'
+              next if decl.empty? && !bd
+              decl << "border: 1px solid #{bd || 'transparent'};" << "border-radius: #{radius}px;"
+              decl += ['padding: 3px 14px;', 'min-width: 56px;'] if pseudo.empty?
+            elsif bd
+              decl << "border-color: #{bd};"
+            end
+            next if decl.empty?
+            css << "#{MESSAGE_BOX_BUTTON}#{pseudo}#{st == 'normal' ? '' : ":#{st}"} {\n  #{decl.join("\n  ")}\n}"
+          end
+        end
+        css[0] = "/* Message boxes */\n#{css[0]}" unless css.empty?
         css.join("\n\n")
       end
 

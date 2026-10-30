@@ -9,6 +9,17 @@ module Ladb
   module Styler
     module Dialog
 
+      # Message box previews : kind (from the page) => [UI.messagebox type, text].
+      PREVIEWS = {
+        'ok' => [MB_OK, 'Preview of an OK message box.'],
+        'okcancel' => [MB_OKCANCEL, 'Preview of an OK / Cancel message box.'],
+        'yesno' => [MB_YESNO, 'Preview of a Yes / No message box.'],
+        'yesnocancel' => [MB_YESNOCANCEL, 'Preview of a Yes / No / Cancel message box.'],
+        'retrycancel' => [MB_RETRYCANCEL, 'Preview of a Retry / Cancel message box.'],
+        'abortretryignore' => [MB_ABORTRETRYIGNORE, 'Preview of an Abort / Retry / Ignore message box.'],
+        'multiline' => [MB_MULTILINE, "Preview of a multiline message box.\n\nA longer text, spread over several lines, to check how the text and the buttons line up when the message is wider than the buttons."],
+      }.freeze
+
       def self.show
         if @dialog && @dialog.visible?
           @dialog.bring_to_front
@@ -37,15 +48,41 @@ module Ladb
           _push(Styler.apply, nil, true)
         end
         @dialog.add_action_callback('restore_native') { |_| _push(Styler.clear) }
+        @dialog.add_action_callback('preset_save') do |_, name, json|
+          name = name.to_s.strip
+          next if name.empty?
+          Styler.save_preset(name, JSON.parse(json))
+          _push("Preset \"#{name}\" saved.", nil, false, name)
+        end
+        @dialog.add_action_callback('preset_load') do |_, name|
+          theme = Styler.preset(name)
+          next unless theme
+          Styler.save_theme(theme)
+          status = Styler.apply(theme)
+          _push(status == :ok ? "Preset \"#{name}\" applied." : status, theme, true, name)
+        end
+        @dialog.add_action_callback('preset_delete') do |_, name|
+          Styler.delete_preset(name)
+          _push("Preset \"#{name}\" deleted.", nil, false, '')
+        end
+        @dialog.add_action_callback('messagebox_preview') do |_, kind|
+          type, text = PREVIEWS[kind.to_s]
+          # Opened from a timer : the box is modal and would block this callback.
+          UI.start_timer(0, false) { UI.messagebox(text, type) } if type
+        end
         @dialog.set_on_closed { @dialog = nil }
 
         @dialog.show
       end
 
-      def self._push(status, theme = nil, reload = false)
+      # status : a Styler.apply status, or a message string.
+      # preset : name to select in the preset list (nil keeps the current selection).
+      def self._push(status, theme = nil, reload = false, preset = nil)
         return unless @dialog
         theme ||= Styler.theme
         state = {
+          presets: Styler.presets.keys.sort_by(&:downcase),
+          preset: preset,
           theme: theme,
           qss: Styler.qss(theme),
           status: status && Styler.status_message(status),

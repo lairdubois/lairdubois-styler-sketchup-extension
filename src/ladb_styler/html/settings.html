@@ -117,6 +117,17 @@
     -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
     background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(0, 0, 0, .3); cursor: pointer;
   }
+  select {
+    font: inherit; color: var(--fg); background: var(--field); flex: 1; min-width: 0;
+    border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; outline: none;
+  }
+  select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .presets .row { gap: 6px; }
+  .presets input[type=text] { flex: 1; width: auto; min-width: 0; }
+  .btn-text:disabled { opacity: .4; pointer-events: none; }
+  .btn-text.danger { color: var(--danger); }
+  .row.preview { align-items: flex-start; padding-top: 6px; border-top: 1px solid var(--line); }
+  .preview-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; flex: 2; }
   .value { width: 34px; white-space: nowrap; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 
   /* ----- Color swatches : a native color input stretched over the swatch */
@@ -257,6 +268,22 @@
     </div>
     <input type="checkbox" class="switch" id="enabled" title="Enable styling">
   </header>
+
+  <details class="card presets" data-card="presets">
+    <summary>Presets <span class="hint" id="preset_hint"></span></summary>
+    <div class="body">
+      <div class="row">
+        <select id="preset_list" title="Saved presets"></select>
+        <button class="btn-text" id="preset_load" type="button">Apply</button>
+        <button class="btn-text" id="preset_delete" type="button">Delete</button>
+      </div>
+      <div class="row">
+        <input type="text" id="preset_name" placeholder="Preset name" spellcheck="false">
+        <button class="btn-text" id="preset_save" type="button">Save current</button>
+      </div>
+      <p class="hint">A preset is a snapshot of every setting below. Saving under an existing name replaces it.</p>
+    </div>
+  </details>
 
   <fieldset id="all">
 
@@ -528,6 +555,89 @@
       </div>
     </details>
 
+    <details class="card" data-card="scrollbars">
+      <summary class="head">
+        <h2>Scrollbars</h2>
+        <input type="checkbox" class="switch" id="sbar_enabled" title="Style the scrollbars">
+      </summary>
+      <div class="body">
+        <fieldset id="scrollbars_fs">
+        <div class="row">
+          <div class="label">Track<small>behind the handle, none when unset</small></div>
+          <span data-swatch="sbar_track" title="Scrollbar track"></span>
+        </div>
+        <table class="states">
+          <thead><tr><th>Handle</th><th>Background</th></tr></thead>
+          <tbody id="sbar_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Thickness<small>14 px native</small></div>
+          <input type="range" id="sbar_width" min="6" max="16" step="1">
+          <span class="value" id="sbar_width_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Corner radius<small>of the handle</small></div>
+          <input type="range" id="sbar_radius" min="0" max="8" step="1">
+          <span class="value" id="sbar_radius_v"></span>
+        </div>
+        <p class="hint">Panels and lists of the main window, without arrows. Unset handle: palette mid color; unset hover follows normal, pressed follows hover. HTML dialogs keep their own scrollbars.</p>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="card" data-card="messagebox">
+      <summary class="head">
+        <h2>Message boxes</h2>
+        <input type="checkbox" class="switch" id="mb_enabled" title="Style the message boxes">
+      </summary>
+      <div class="body">
+        <fieldset id="messagebox_fs">
+        <div class="row">
+          <div class="label">Background<small>native when unset</small></div>
+          <span data-swatch="mb_background" title="Message box background"></span>
+        </div>
+        <div class="row">
+          <div class="label">Text<small>the message</small></div>
+          <span data-swatch="mb_text" title="Message box text"></span>
+        </div>
+        <table class="states">
+          <thead><tr><th>Buttons</th><th>Background</th><th>Text</th><th>Border</th></tr></thead>
+          <tbody id="mb_button_states"></tbody>
+        </table>
+        <table class="states">
+          <thead><tr><th>Default button</th><th>Background</th><th>Text</th><th>Border</th></tr></thead>
+          <tbody id="mb_default_states"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Corner radius<small>of the buttons</small></div>
+          <input type="range" id="mb_radius" min="0" max="10" step="1">
+          <span class="value" id="mb_radius_v"></span>
+        </div>
+        <div class="row">
+          <div class="label">Center<small>text and buttons</small></div>
+          <input type="checkbox" class="switch" id="mb_center" title="Center the text and the buttons">
+        </div>
+        <div class="row">
+          <div class="label">Hide icon<small>its column leaves a small gap, balanced when centered</small></div>
+          <input type="checkbox" class="switch" id="mb_hide_icon" title="Hide the message box icon">
+        </div>
+        <p class="hint">UI.messagebox and SketchUp's Qt message boxes. The default button is the one Return triggers. Buttons stay side by side: stacked, Qt cannot center them under a long text.</p>
+        </fieldset>
+        <div class="row preview">
+          <div class="label">Preview<small>opens a real message box</small></div>
+          <div class="preview-buttons">
+            <button class="btn-text" type="button" data-mb="ok">OK</button>
+            <button class="btn-text" type="button" data-mb="okcancel">OK · Cancel</button>
+            <button class="btn-text" type="button" data-mb="yesno">Yes · No</button>
+            <button class="btn-text" type="button" data-mb="yesnocancel">Yes · No · Cancel</button>
+            <button class="btn-text" type="button" data-mb="retrycancel">Retry · Cancel</button>
+            <button class="btn-text" type="button" data-mb="abortretryignore">Abort · Retry · Ignore</button>
+            <button class="btn-text" type="button" data-mb="multiline">Multiline</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
     <details class="card" data-card="window">
       <summary class="head">
         <h2>Window</h2>
@@ -539,6 +649,30 @@
           <div class="label">Title bar<small>main window, native when unset; title text light or dark to match</small></div>
           <span data-swatch="title_bar" title="Title bar color"></span>
         </div>
+        </fieldset>
+      </div>
+    </details>
+
+    <details class="card" data-card="palette">
+      <summary class="head">
+        <h2>Palette</h2>
+        <input type="checkbox" class="switch" id="pal_enabled" title="Recolor the application palette (experimental)">
+      </summary>
+      <div class="body">
+        <fieldset id="palette_fs">
+        <table class="states">
+          <thead><tr><th>Native widgets</th><th>Background</th><th>Text</th></tr></thead>
+          <tbody id="pal_roles"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Lines<small>frames and bevels, one color: no gradient</small></div>
+          <span data-swatch="pal_lines" title="Lines"></span>
+        </div>
+        <div class="row">
+          <div class="label">Gradient<small>light end of the panel gradient, toward Lines; flat when unset</small></div>
+          <span data-swatch="pal_gradient" title="Gradient"></span>
+        </div>
+        <p class="hint">Experimental. Unset keeps SketchUp's color. Reaches the panels, fields and lists the style sheet cannot isolate; the style sheet rules above still win. The document and panel tab bars, the Measurements box and the comments panel keep SketchUp's own colors.</p>
         </fieldset>
       </div>
     </details>
@@ -579,8 +713,16 @@
   const CLOSE_KEYS = ['background', 'color'];
   const SB_STATES = ['hover', 'pressed'];
   const SB_KEYS = ['background', 'border'];
+  const SBAR_STATES = ['normal', 'hover', 'pressed'];
+  const MB_STATES = ['normal', 'hover', 'pressed'];
+  const MB_KEYS = ['background', 'text', 'border'];
+  const MB_GROUPS = ['button', 'default'];
   // [fieldset, switch] : each card can be turned off like the toolbars one.
-  const SECTIONS = [['tabs_fs', 'tabs_enabled'], ['scenes_fs', 'sc_enabled'], ['statusbar_fs', 'sb_enabled'], ['window_fs', 'win_enabled']];
+  // Palette rows : [label, background role, text role] ; null = no swatch.
+  const PAL_ROWS = [['Windows', 'window', 'window_text'], ['Fields and lists', 'base', 'text'], ['Alternate rows', 'alternate_base', null],
+                    ['Placeholder', null, 'placeholder_text'], ['Buttons', 'button', 'button_text'], ['Selection', 'highlight', 'highlighted_text']];
+  const PAL_ROLES = PAL_ROWS.flatMap(([, bg, fg]) => [bg, fg]).filter(Boolean).concat(['lines', 'gradient']);
+  const SECTIONS = [['tabs_fs', 'tabs_enabled'], ['scenes_fs', 'sc_enabled'], ['statusbar_fs', 'sb_enabled'], ['scrollbars_fs', 'sbar_enabled'], ['messagebox_fs', 'mb_enabled'], ['window_fs', 'win_enabled'], ['palette_fs', 'pal_enabled']];
   const $ = (id) => document.getElementById(id);
   const cap = (s) => s[0].toUpperCase() + s.slice(1);
 
@@ -656,6 +798,24 @@
     tr.innerHTML = `<td>${cap(st)}</td>` + SB_KEYS.map((k) => `<td>${swatchHtml(`sb_${st}_${k}`, `Status bar button ${st} ${k}`)}</td>`).join('');
     $('sb_states').appendChild(tr);
     SB_KEYS.forEach((k) => bindSwatch(`sb_${st}_${k}`));
+  });
+  SBAR_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td><td>${swatchHtml(`sbar_${st}`, `Scrollbar handle ${st}`)}</td>`;
+    $('sbar_states').appendChild(tr);
+    bindSwatch(`sbar_${st}`);
+  });
+  MB_GROUPS.forEach((g) => MB_STATES.forEach((st) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${cap(st)}</td>` + MB_KEYS.map((k) => `<td>${swatchHtml(`mb_${g}_${st}_${k}`, `Message box ${g} button ${st} ${k}`)}</td>`).join('');
+    $(`mb_${g}_states`).appendChild(tr);
+    MB_KEYS.forEach((k) => bindSwatch(`mb_${g}_${st}_${k}`));
+  }));
+  PAL_ROWS.forEach(([label, ...roles]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td>` + roles.map((r) => `<td>${r ? swatchHtml(`pal_${r}`, `${label} ${r.replace(/_/g, ' ')}`) : ''}</td>`).join('');
+    $('pal_roles').appendChild(tr);
+    roles.filter(Boolean).forEach((r) => bindSwatch(`pal_${r}`));
   });
   document.querySelectorAll('[data-swatch]').forEach((el) => {
     const key = el.dataset.swatch;
@@ -837,7 +997,7 @@
     $('tb').disabled = !$('tb_enabled').checked;
     SECTIONS.forEach(([fs, sw]) => { $(fs).disabled = !$(sw).checked; });
     $('titles_row').style.display = segValue('tb_scope') === 'titles' ? '' : 'none';
-    ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_radius', 'sb_radius'].forEach((id) => { $(`${id}_v`).textContent = `${$(id).value} px`; });
+    ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_radius', 'sb_radius', 'sbar_width', 'sbar_radius', 'mb_radius'].forEach((id) => { $(`${id}_v`).textContent = `${$(id).value} px`; });
     ['plus_font', 'sc_plus_font'].forEach((id) => { $(`${id}_v`).textContent = ($(id).value | 0) > 9 ? `${$(id).value} px` : 'native'; });
     preview();
   };
@@ -901,8 +1061,25 @@
     setColor('sb_text', hex(sb.text));
     SB_STATES.forEach((st) => SB_KEYS.forEach((k) => setColor(`sb_${st}_${k}`, hex((sb[st] || {})[k]))));
     $('sb_radius').value = sb.radius ?? 4;
+    const sbar = t.scrollbars || {};
+    $('sbar_enabled').checked = sbar.enabled !== false;
+    setColor('sbar_track', hex(sbar.track));
+    SBAR_STATES.forEach((st) => setColor(`sbar_${st}`, hex(sbar[st])));
+    $('sbar_width').value = sbar.width ?? 10;
+    $('sbar_radius').value = sbar.radius ?? 3;
+    const mb = t.messagebox || {};
+    $('mb_enabled').checked = mb.enabled !== false;
+    setColor('mb_background', hex(mb.background));
+    setColor('mb_text', hex(mb.text));
+    MB_GROUPS.forEach((g) => MB_STATES.forEach((st) => MB_KEYS.forEach((k) => setColor(`mb_${g}_${st}_${k}`, hex(((mb[g] || {})[st] || {})[k])))));
+    $('mb_radius').value = mb.radius ?? 5;
+    $('mb_center').checked = mb.center !== false;
+    $('mb_hide_icon').checked = mb.hide_icon !== false;
     $('win_enabled').checked = (t.window || {}).enabled !== false;
     setColor('title_bar', hex((t.window || {}).title_bar));
+    const pal = t.palette || {};
+    $('pal_enabled').checked = !!pal.enabled;
+    PAL_ROLES.forEach((r) => setColor(`pal_${r}`, hex(pal[r])));
     $('extra_qss').value = t.extra_qss || '';
     refresh();
   };
@@ -977,7 +1154,19 @@
       statusbar[st] = {};
       SB_KEYS.forEach((k) => { statusbar[st][k] = colors[`sb_${st}_${k}`] || ''; });
     });
-    return { enabled: $('enabled').checked, toolbar: tb, tabs, scenes, statusbar, window: { enabled: $('win_enabled').checked, title_bar: colors.title_bar || '' }, extra_qss: $('extra_qss').value };
+    const scrollbars = { enabled: $('sbar_enabled').checked, track: colors.sbar_track || '', width: parseInt($('sbar_width').value, 10) || 10, radius: parseInt($('sbar_radius').value, 10) || 0 };
+    SBAR_STATES.forEach((st) => { scrollbars[st] = colors[`sbar_${st}`] || ''; });
+    const messagebox = { enabled: $('mb_enabled').checked, background: colors.mb_background || '', text: colors.mb_text || '', radius: parseInt($('mb_radius').value, 10) || 0, center: $('mb_center').checked, hide_icon: $('mb_hide_icon').checked };
+    MB_GROUPS.forEach((g) => {
+      messagebox[g] = {};
+      MB_STATES.forEach((st) => {
+        messagebox[g][st] = {};
+        MB_KEYS.forEach((k) => { messagebox[g][st][k] = colors[`mb_${g}_${st}_${k}`] || ''; });
+      });
+    });
+    const palette = { enabled: $('pal_enabled').checked };
+    PAL_ROLES.forEach((r) => { palette[r] = colors[`pal_${r}`] || ''; });
+    return { enabled: $('enabled').checked, toolbar: tb, tabs, scenes, statusbar, scrollbars, messagebox, window: { enabled: $('win_enabled').checked, title_bar: colors.title_bar || '' }, palette, extra_qss: $('extra_qss').value };
   };
 
   const commit = () => {
@@ -985,8 +1174,47 @@
     sketchup.change(JSON.stringify(collect()));
   };
 
+  // Presets
+  let presetNames = [];
+  const presetRefresh = () => {
+    const sel = $('preset_list').value;
+    const name = $('preset_name').value.trim();
+    $('preset_load').disabled = $('preset_delete').disabled = !sel;
+    $('preset_save').disabled = !name;
+    $('preset_save').textContent = presetNames.includes(name) ? 'Replace' : 'Save current';
+    $('preset_delete').textContent = 'Delete';
+    $('preset_delete').classList.remove('danger');
+    $('preset_hint').textContent = presetNames.length ? `${presetNames.length} saved` : 'none saved';
+  };
+  const presetFill = (names, selected) => {
+    presetNames = names;
+    const list = $('preset_list');
+    const keep = selected ?? list.value;
+    list.innerHTML = names.length ? '' : '<option value="">No preset yet</option>';
+    names.forEach((n) => list.add(new Option(n, n)));
+    if (names.includes(keep)) list.value = keep;
+    if (selected !== null && selected !== undefined) $('preset_name').value = selected;
+    presetRefresh();
+  };
+  $('preset_list').addEventListener('change', () => { $('preset_name').value = $('preset_list').value; presetRefresh(); });
+  $('preset_name').addEventListener('input', presetRefresh);
+  $('preset_name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('preset_save').click(); });
+  $('preset_load').addEventListener('click', () => sketchup.preset_load($('preset_list').value));
+  $('preset_save').addEventListener('click', () => {
+    const name = $('preset_name').value.trim();
+    if (name) sketchup.preset_save(name, JSON.stringify(collect()));
+  });
+  // Two clicks : the first one arms the button (no confirm() dialog in an HtmlDialog).
+  $('preset_delete').addEventListener('click', () => {
+    const b = $('preset_delete');
+    if (!b.classList.contains('danger')) { b.classList.add('danger'); b.textContent = 'Confirm delete'; return; }
+    sketchup.preset_delete($('preset_list').value);
+  });
+  $('preset_delete').addEventListener('blur', presetRefresh);
+
   // Ruby -> JS
   window.receive = (state) => {
+    if (state.presets) presetFill(state.presets, state.preset);
     if (state.reload) fill(state.theme);
     $('qss').value = state.qss || '/* nothing applied */';
     const s = $('status');
@@ -996,10 +1224,11 @@
   };
 
   // JS -> Ruby : commit on 'change' (field left, switch flipped, slider released), not on every keystroke.
-  ['enabled', 'tb_enabled', 'tabs_enabled', 'sc_enabled', 'sb_enabled', 'win_enabled', 'tb_titles', 'tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'plus_font', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_font', 'sc_plus_radius', 'sb_radius', 'extra_qss'].forEach((id) => $(id).addEventListener('change', commit));
-  ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'plus_font', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_font', 'sc_plus_radius', 'sb_radius'].forEach((id) => $(id).addEventListener('input', refresh));
+  ['enabled', 'tb_enabled', 'tabs_enabled', 'sc_enabled', 'sb_enabled', 'sbar_enabled', 'mb_enabled', 'mb_center', 'mb_hide_icon', 'win_enabled', 'pal_enabled', 'tb_titles', 'tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'plus_font', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_font', 'sc_plus_radius', 'sb_radius', 'sbar_width', 'sbar_radius', 'mb_radius', 'extra_qss'].forEach((id) => $(id).addEventListener('change', commit));
+  ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'plus_font', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_font', 'sc_plus_radius', 'sb_radius', 'sbar_width', 'sbar_radius', 'mb_radius'].forEach((id) => $(id).addEventListener('input', refresh));
   $('reset').addEventListener('click', () => sketchup.reset());
   $('native').addEventListener('click', () => sketchup.restore_native());
+  document.querySelectorAll('[data-mb]').forEach((b) => b.addEventListener('click', () => sketchup.messagebox_preview(b.dataset.mb)));
 
   window.addEventListener('load', () => sketchup.ready());
 </script>

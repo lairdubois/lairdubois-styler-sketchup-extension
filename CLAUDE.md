@@ -38,7 +38,9 @@ Headless harnesses and stub pages go in the scratchpad, never in the repo.
   icon size…); `QApplication::setStyleSheet` makes that style a `QStyleSheetStyle` → SIGSEGV
   (crash seen 2026-09-22). The sheet goes on the main window (`CMainFrame`) with
   `QWidget::setStyleSheet`: it covers every descendant and leaves the application style alone.
-- **Minimal native surface.** One Qt call that matters: `QWidget::setStyleSheet` on `CMainFrame`; on the
+- **Minimal native surface.** Two Qt calls that matter: `QWidget::setStyleSheet` on `CMainFrame`, and
+  `QApplication::setPalette` (`Qt.set_palette`: it leaves the application style alone; set it *before*
+  the sheet, which must be set again for `CMainFrame`'s descendants to follow); on the
   AppKit side, only `NSWindow` property setters/getters (`macos.rb`), no native callback (a Ruby
   exception in one kills SketchUp — use a Ruby timer instead). Never
   call a Qt function returning a value type by value (`QString`, `QPalette`, `QVariant`…):

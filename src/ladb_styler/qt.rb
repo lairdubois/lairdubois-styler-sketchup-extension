@@ -12,8 +12,16 @@
 # leaves the application style alone and still covers every descendant :
 # toolbars (floating ones stay children), the area behind them, the docks.
 #
+# The application palette (set_palette) is the second lever : it reaches the
+# native widgets no selector isolates (panels, fields, lists), and it leaves
+# QApplication::style() alone (measured : SketchUpProxyStyle kept). Under the
+# main window style sheet, descendants keep the palette QStyleSheetStyle pinned
+# at polish time : the sheet must be set again after the palette (Styler.apply
+# does both, palette first ; re-setting the same string is enough, measured).
+#
 # Rules kept deliberately:
-# - one Qt call that matters, QWidget::setStyleSheet(QString const&) ;
+# - two Qt calls that matter, QWidget::setStyleSheet(QString const&) and
+#   QApplication::setPalette(QPalette const&, const char*) ;
 # - no call returning a Qt value type by value (QString, QPalette… come back
 #   through x8 on arm64, out of reach of Fiddle) ;
 # - no QWidget::render into a QImage (it killed SketchUp on 2026-09-22).
@@ -35,10 +43,32 @@ module Ladb
 
       MAIN_FRAME_CLASS = 'CMainFrame'
 
+      SYM_APP_PAL = '_ZN22QGuiApplicationPrivate7app_palE' # static QPalette * : the application palette
+      SYM_APP_SET_PALETTE = '_ZN12QApplication10setPaletteERK8QPalettePKc'
+      SYM_PALETTE_COPY = '_ZN8QPaletteC1ERKS_'
+      SYM_PALETTE_DTOR = '_ZN8QPaletteD1Ev'
+      SYM_PALETTE_SET_BRUSH = '_ZN8QPalette8setBrushENS_10ColorGroupENS_9ColorRoleERK6QBrush'
+      SYM_COLOR_RGB = '_ZN6QColorC1Ej'
+      SYM_BRUSH_CTOR = '_ZN6QBrushC1ERK6QColorN2Qt10BrushStyleE'
+      SYM_BRUSH_DTOR = '_ZN6QBrushD1Ev'
+      PALETTE_SYMS = [SYM_APP_PAL, SYM_APP_SET_PALETTE, SYM_PALETTE_COPY, SYM_PALETTE_DTOR,
+                      SYM_PALETTE_SET_BRUSH, SYM_COLOR_RGB, SYM_BRUSH_CTOR, SYM_BRUSH_DTOR].freeze
+
+      # QPalette::ColorRole values (Qt 6).
+      ROLES = {
+        'window_text' => 0, 'button' => 1, 'light' => 2, 'midlight' => 3, 'dark' => 4, 'mid' => 5,
+        'text' => 6, 'bright_text' => 7, 'button_text' => 8, 'base' => 9, 'window' => 10, 'shadow' => 11,
+        'highlight' => 12, 'highlighted_text' => 13, 'link' => 14, 'link_visited' => 15,
+        'alternate_base' => 16, 'tool_tip_base' => 18, 'tool_tip_text' => 19, 'placeholder_text' => 20,
+      }.freeze
+
       @fns = {}
       # Both survive a reload : dropping @keep would let the GC free buffers Qt still reads.
       @keep = [] unless defined?(@keep)     # QString buffers Qt may still point to (d = nullptr => not owned by Qt)
       @owned = false unless defined?(@owned) # true while the main window style sheet is ours
+      # SketchUp's palette, copied before our first change (nil while it is in place), and the roles we set.
+      @original_palette = nil unless defined?(@original_palette)
+      @palette = nil unless defined?(@palette)
 
       def self.supported?
         return @supported unless @supported.nil?
@@ -87,6 +117,35 @@ module Ladb
 
       def self.owned?
         @owned
+      end
+
+      def self.palette_supported?
+        return @palette_supported unless @palette_supported.nil?
+        @palette_supported = supported? && PALETTE_SYMS.all? { |s| _sym(s) }
+      end
+
+      # colors : { role name (ROLES) => '#rrggbb' } over SketchUp's palette ; empty or nil puts
+      # SketchUp's palette back. Returns true when the application palette changed : the main
+      # window style sheet must then be set again for its descendants to follow.
+      def self.set_palette(colors)
+        return false unless palette_supported?
+        colors = (colors || {}).filter_map { |role, c| ROLES[role] && c =~ /\A#\h{6}\z/ && [ROLES[role], c.delete('#').hex] }.to_h
+        return false if colors == (@palette || {})
+        if colors.empty?
+          _restore_palette
+        else
+          @original_palette ||= _copy_palette(_read_ptr(F::Handle::DEFAULT[SYM_APP_PAL]))
+          pal = _copy_palette(@original_palette)
+          colors.each { |role, rgb| _set_role(pal, role, 0xff000000 | rgb) }
+          _fn(SYM_APP_SET_PALETTE, [V, V], VOID).call(pal, nil)
+          _fn(SYM_PALETTE_DTOR, [V], VOID).call(pal) # the application keeps its own (shared) copy
+          @palette = colors
+        end
+        true
+      end
+
+      def self.palette_owned?
+        !@palette.nil?
       end
 
       # Qt class name of the widget whose native view is ns_view, nil if none.
@@ -138,6 +197,33 @@ module Ladb
         qs[0, 24] = [0, buf.to_i, utf16.bytesize / 2].pack('Q3')
         @keep << [buf, qs]
         qs
+      end
+
+      # A QPalette (implicitly shared : the copy only takes a reference) in a buffer of ours.
+      # Fiddle::Pointer.malloc without a free function is never released : a few bytes per change.
+      def self._copy_palette(src)
+        pal = F::Pointer.malloc(64)
+        _fn(SYM_PALETTE_COPY, [V, V], VOID).call(pal, src)
+        pal
+      end
+
+      # QPalette::setColor is inline : setBrush(group, role, QBrush(color)) for Active, Disabled, Inactive.
+      def self._set_role(pal, role, argb)
+        color = F::Pointer.malloc(16)
+        _fn(SYM_COLOR_RGB, [V, -F::TYPE_INT], VOID).call(color, argb) # QRgb is unsigned
+        brush = F::Pointer.malloc(16)
+        _fn(SYM_BRUSH_CTOR, [V, V, F::TYPE_INT], VOID).call(brush, color, 1) # Qt::SolidPattern
+        [0, 1, 2].each { |group| _fn(SYM_PALETTE_SET_BRUSH, [V, F::TYPE_INT, F::TYPE_INT, V], VOID).call(pal, group, role, brush) }
+        _fn(SYM_BRUSH_DTOR, [V], VOID).call(brush)
+      end
+
+      # Copied again on the next change : SketchUp may change its own palette meanwhile.
+      def self._restore_palette
+        return unless @original_palette
+        _fn(SYM_APP_SET_PALETTE, [V, V], VOID).call(@original_palette, nil)
+        _fn(SYM_PALETTE_DTOR, [V], VOID).call(@original_palette)
+        @original_palette = nil
+        @palette = nil
       end
 
     end
