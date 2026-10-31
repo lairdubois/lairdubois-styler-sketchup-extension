@@ -27,7 +27,7 @@ module Ladb
         end
 
         @dialog = UI::HtmlDialog.new(
-          dialog_title: 'Styler',
+          dialog_title: "Styler #{VERSION}",
           preferences_key: 'ladb_styler_dialog',
           width: 480,
           height: 780,
