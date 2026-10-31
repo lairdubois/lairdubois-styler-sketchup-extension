@@ -67,6 +67,34 @@ module Ladb
       theme && Theme.normalize(theme)
     end
 
+    # ----- Preset files : { "format", "version", "name", "theme" } as pretty JSON.
+
+    PRESET_FILE_FORMAT = 'ladb_styler_preset'
+    PRESET_FILE_VERSION = 1
+
+    def self.export_preset(name, path)
+      theme = preset(name)
+      raise ArgumentError, "unknown preset \"#{name}\"" unless theme
+      File.write(path, JSON.pretty_generate(
+        'format' => PRESET_FILE_FORMAT, 'version' => PRESET_FILE_VERSION, 'name' => name, 'theme' => theme
+      ))
+    end
+
+    # Returns [name, theme] ; raises ArgumentError / JSON::ParserError on a file that is not a preset.
+    # The name defaults to the file name ; an existing preset is never replaced : " (2)", " (3)"… is appended.
+    def self.read_preset_file(path)
+      data = JSON.parse(File.read(path, encoding: 'UTF-8'))
+      unless data.is_a?(Hash) && data['format'] == PRESET_FILE_FORMAT && data['theme'].is_a?(Hash)
+        raise ArgumentError, 'not a Styler preset file'
+      end
+      base = data['name'].to_s.strip
+      base = File.basename(path, '.*') if base.empty?
+      name = base
+      n = 1
+      name = "#{base} (#{n += 1})" while presets.key?(name)
+      [name, Theme.normalize(data['theme'])]
+    end
+
     def self.qss(theme = self.theme)
       Theme.to_qss(theme, ASSETS_DIR)
     end

@@ -281,7 +281,11 @@
         <input type="text" id="preset_name" placeholder="Preset name" spellcheck="false">
         <button class="btn-text" id="preset_save" type="button">Save current</button>
       </div>
-      <p class="hint">A preset is a snapshot of every setting below. Saving under an existing name replaces it.</p>
+      <div class="row">
+        <button class="btn-text" id="preset_export" type="button" title="Save the selected preset as a JSON file">Export…</button>
+        <button class="btn-text" id="preset_import" type="button" title="Add a preset from a JSON file">Import…</button>
+      </div>
+      <p class="hint">A preset is a snapshot of every setting below. Saving under an existing name replaces it. Importing never replaces one: a number is appended to the name.</p>
     </div>
   </details>
 
@@ -1179,7 +1183,7 @@
   const presetRefresh = () => {
     const sel = $('preset_list').value;
     const name = $('preset_name').value.trim();
-    $('preset_load').disabled = $('preset_delete').disabled = !sel;
+    $('preset_load').disabled = $('preset_delete').disabled = $('preset_export').disabled = !sel;
     $('preset_save').disabled = !name;
     $('preset_save').textContent = presetNames.includes(name) ? 'Replace' : 'Save current';
     $('preset_delete').textContent = 'Delete';
@@ -1211,6 +1215,8 @@
     sketchup.preset_delete($('preset_list').value);
   });
   $('preset_delete').addEventListener('blur', presetRefresh);
+  $('preset_export').addEventListener('click', () => sketchup.preset_export($('preset_list').value));
+  $('preset_import').addEventListener('click', () => sketchup.preset_import());
 
   // Ruby -> JS
   window.receive = (state) => {

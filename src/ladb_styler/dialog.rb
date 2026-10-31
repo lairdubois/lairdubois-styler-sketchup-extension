@@ -65,6 +65,34 @@ module Ladb
           Styler.delete_preset(name)
           _push("Preset \"#{name}\" deleted.", nil, false, '')
         end
+        # File panels are modal : opened from a timer, like the message box previews.
+        @dialog.add_action_callback('preset_export') do |_, name|
+          next unless Styler.presets.key?(name)
+          UI.start_timer(0, false) do
+            path = UI.savepanel('Export Styler preset', '', "#{name.gsub(%r{[/\\:]}, '-')}.json")
+            next unless path
+            path += '.json' unless File.extname(path).casecmp?('.json')
+            begin
+              Styler.export_preset(name, path)
+              _push("Preset \"#{name}\" exported to #{File.basename(path)}.")
+            rescue StandardError => e
+              _push("Export failed: #{e.message}")
+            end
+          end
+        end
+        @dialog.add_action_callback('preset_import') do |_|
+          UI.start_timer(0, false) do
+            path = UI.openpanel('Import Styler preset', '', 'Styler preset|*.json||')
+            next unless path
+            begin
+              name, theme = Styler.read_preset_file(path)
+              Styler.save_preset(name, theme)
+              _push("Preset \"#{name}\" imported.", nil, false, name)
+            rescue StandardError => e
+              _push("Import failed, #{File.basename(path)}: #{e.message}")
+            end
+          end
+        end
         @dialog.add_action_callback('messagebox_preview') do |_, kind|
           type, text = PREVIEWS[kind.to_s]
           # Opened from a timer : the box is modal and would block this callback.
