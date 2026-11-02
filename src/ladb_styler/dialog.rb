@@ -31,7 +31,7 @@ module Ladb
           preferences_key: 'ladb_styler_dialog',
           width: 480,
           height: 780,
-          min_width: 380,
+          min_width: 460,
           min_height: 400,
           style: UI::HtmlDialog::STYLE_DIALOG
         )
@@ -45,29 +45,51 @@ module Ladb
         end
         @dialog.add_action_callback('reset') do |_|
           Styler.save_theme(Theme.defaults)
+          Styler.active_preset = nil
           _push(Styler.apply, nil, true)
         end
         @dialog.add_action_callback('restore_native') { |_| _push(Styler.clear) }
-        @dialog.add_action_callback('preset_save') do |_, name, json|
+        # Saves the current settings as a new preset (or replaces a saved one of that name).
+        @dialog.add_action_callback('preset_save') do |_, name|
           name = name.to_s.strip
-          next if name.empty?
-          Styler.save_preset(name, JSON.parse(json))
-          _push("Preset \"#{name}\" saved.", nil, false, name)
+          next if name.empty? || Styler.builtin_preset?(name)
+          Styler.save_preset(name, Styler.theme)
+          Styler.active_preset = name
+          _push("Preset \"#{name}\" saved.")
+        end
+        @dialog.add_action_callback('preset_update') do |_, name|
+          next if Styler.builtin_preset?(name) || !Styler.presets.key?(name)
+          Styler.save_preset(name, Styler.theme)
+          Styler.active_preset = name
+          _push("Preset \"#{name}\" updated.")
         end
         @dialog.add_action_callback('preset_load') do |_, name|
           theme = Styler.preset(name)
           next unless theme
+          theme['enabled'] = true # applying a preset means styling on ; the switch is not part of a preset
           Styler.save_theme(theme)
+          Styler.active_preset = name
           status = Styler.apply(theme)
-          _push(status == :ok ? "Preset \"#{name}\" applied." : status, theme, true, name)
+          _push(status == :ok ? "Preset \"#{name}\" applied." : status, theme, true)
+        end
+        @dialog.add_action_callback('preset_rename') do |_, name, new_name|
+          new_name = new_name.to_s.strip
+          next if new_name.empty? || new_name == name
+          begin
+            Styler.rename_preset(name, new_name)
+            _push("Preset \"#{name}\" renamed to \"#{new_name}\".")
+          rescue ArgumentError => e
+            _push("Rename failed: #{e.message}")
+          end
         end
         @dialog.add_action_callback('preset_delete') do |_, name|
+          next if Styler.builtin_preset?(name)
           Styler.delete_preset(name)
-          _push("Preset \"#{name}\" deleted.", nil, false, '')
+          _push("Preset \"#{name}\" deleted.")
         end
         # File panels are modal : opened from a timer, like the message box previews.
         @dialog.add_action_callback('preset_export') do |_, name|
-          next unless Styler.presets.key?(name)
+          next unless Styler.preset?(name)
           UI.start_timer(0, false) do
             path = UI.savepanel('Export Styler preset', '', "#{name.gsub(%r{[/\\:]}, '-')}.json")
             next unless path
@@ -87,7 +109,7 @@ module Ladb
             begin
               name, theme = Styler.read_preset_file(path)
               Styler.save_preset(name, theme)
-              _push("Preset \"#{name}\" imported.", nil, false, name)
+              _push("Preset \"#{name}\" imported.")
             rescue StandardError => e
               _push("Import failed, #{File.basename(path)}: #{e.message}")
             end
@@ -104,13 +126,14 @@ module Ladb
       end
 
       # status : a Styler.apply status, or a message string.
-      # preset : name to select in the preset list (nil keeps the current selection).
-      def self._push(status, theme = nil, reload = false, preset = nil)
+      def self._push(status, theme = nil, reload = false)
         return unless @dialog
         theme ||= Styler.theme
         state = {
+          builtin_presets: Styler.builtin_presets.keys,
           presets: Styler.presets.keys.sort_by(&:downcase),
-          preset: preset,
+          active_preset: Styler.active_preset,
+          modified: Styler.preset_modified?(theme),
           theme: theme,
           qss: Styler.qss(theme),
           status: status && Styler.status_message(status),

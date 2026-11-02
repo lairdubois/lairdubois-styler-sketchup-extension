@@ -122,8 +122,48 @@
     border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; outline: none;
   }
   select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  /* ----- Presets : one clickable row each, actions in a ⋯ menu */
+  .presets { position: relative; }
+  .presets [hidden] { display: none !important; }
   .presets .row { gap: 6px; }
   .presets input[type=text] { flex: 1; width: auto; min-width: 0; }
+  .presets input[type=text].bad { border-color: var(--danger); box-shadow: none; }
+  .plist .group { font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 8px 0 2px 8px; }
+  .plist .group:first-child { margin-top: 0; }
+  .prow {
+    display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 2px 0 8px;
+    border-radius: 6px; cursor: pointer;
+  }
+  .prow:hover { background: var(--field); }
+  .prow.active { background: var(--accent-soft); }
+  .prow .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prow.active .name { font-weight: 600; }
+  .prow input[type=text] { height: 22px; padding: 2px 6px; }
+  .prow .state { font-size: 11px; color: var(--accent); white-space: nowrap; }
+  .prow .state.modified { color: var(--muted); }
+  .prow .state.modified::before { content: "●"; color: #e8a33d; margin-right: 4px; font-size: 9px; }
+  .prow .more {
+    flex: none; width: 24px; height: 22px; border: 0; border-radius: 5px; padding: 0; background: none;
+    color: var(--muted); font: 15px/1 inherit; cursor: pointer; visibility: hidden;
+  }
+  .prow:hover .more, .prow.menu-open .more { visibility: visible; }
+  .prow .more:hover, .prow.menu-open .more { background: color-mix(in srgb, var(--faint) 30%, transparent); }
+  .plist .empty { color: var(--faint); font-size: 12px; padding: 4px 8px; }
+  #preset_menu {
+    position: absolute; z-index: 10; min-width: 150px; padding: 4px; border-radius: 8px;
+    background: var(--card); box-shadow: 0 6px 20px rgba(0, 0, 0, .18), 0 0 0 1px var(--line);
+  }
+  #preset_menu button {
+    display: block; width: 100%; text-align: left; border: 0; background: none; color: var(--fg);
+    font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 5px; cursor: pointer;
+  }
+  #preset_menu button:hover { background: var(--accent); color: #fff; }
+  #preset_menu button.danger { color: var(--danger); }
+  #preset_menu button.danger:hover { background: var(--danger); color: #fff; }
+  #preset_menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
+  .presets .actions { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .presets .actions .spacer { flex: 1; }
+  #preset_new { margin-top: 8px; }
   .btn-text:disabled { opacity: .4; pointer-events: none; }
   .btn-text.danger { color: var(--danger); }
   .row.preview { align-items: flex-start; padding-top: 6px; border-top: 1px solid var(--line); }
@@ -138,9 +178,21 @@
   .states td { padding: 5px 0; border-top: 1px solid var(--line); text-align: center; }
   .states td:first-child { text-align: left; }
 
-  .swatch { display: inline-flex; align-items: center; gap: 4px; }
+  .swatch { display: inline-flex; align-items: center; gap: 2px; }
+  /* The chip (native picker) sits inside a hex text field : the value can be typed, copied, pasted */
+  .swatch .field {
+    display: inline-flex; align-items: center; height: 22px; padding-left: 3px; box-sizing: border-box;
+    background: var(--field); border: 1px solid transparent; border-radius: 6px;
+  }
+  .swatch .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .swatch .hex, .swatch .hex:focus {
+    width: 62px; height: 20px; padding: 0 4px; border: 0; border-radius: 0; background: none; box-shadow: none;
+    font: 11px ui-monospace, "SF Mono", Menlo, Consolas, monospace; text-transform: lowercase;
+  }
+  .swatch .hex::placeholder { color: var(--faint); }
+  .swatch .hex.bad { color: var(--danger); }
   .swatch .chip {
-    position: relative; width: 44px; height: 22px; border-radius: 6px; overflow: hidden;
+    position: relative; flex: none; width: 16px; height: 16px; border-radius: 4px; overflow: hidden;
     box-shadow: inset 0 0 0 1px var(--line); cursor: pointer;
     background: var(--c, transparent);
   }
@@ -178,8 +230,9 @@
     border-style: solid; border-color: transparent;
   }
   .preview svg { width: 20px; height: 20px; }
-  .preview .bar { display: flex; align-items: center; padding: 1px 1px 1px 11px; border: 1px solid transparent; }
+  .preview .bar { display: flex; align-items: center; padding: 1px; border: 1px solid transparent; }
   .preview .sep { width: 6px; height: 32px; }
+  .preview .hdl { width: 10px; height: 32px; display: grid; place-items: center; flex: none; }
 
   /* Document tabs preview : native colors measured on SketchUp 2027 */
   .preview.tabs { justify-content: flex-start; align-items: flex-end; gap: 0; padding: 10px 10px 0; background: #f1f1f6; }
@@ -272,24 +325,47 @@
   <details class="card presets" data-card="presets">
     <summary>Presets <span class="hint" id="preset_hint"></span></summary>
     <div class="body">
-      <div class="row">
-        <select id="preset_list" title="Saved presets"></select>
-        <button class="btn-text" id="preset_load" type="button">Apply</button>
-        <button class="btn-text" id="preset_delete" type="button">Delete</button>
+      <div class="plist" id="preset_list"></div>
+      <div class="row" id="preset_new" hidden>
+        <input type="text" id="preset_name" placeholder="Name of the new preset" spellcheck="false" autocomplete="off">
+        <button class="btn-text" id="preset_save" type="button">Save</button>
+        <button class="btn-text" id="preset_cancel" type="button">Cancel</button>
       </div>
-      <div class="row">
-        <input type="text" id="preset_name" placeholder="Preset name" spellcheck="false">
-        <button class="btn-text" id="preset_save" type="button">Save current</button>
-      </div>
-      <div class="row">
-        <button class="btn-text" id="preset_export" type="button" title="Save the selected preset as a JSON file">Export…</button>
+      <div class="actions">
+        <button class="btn-text" id="preset_add" type="button" title="Save the current settings as a new preset">+ Save current…</button>
+        <span class="spacer"></span>
         <button class="btn-text" id="preset_import" type="button" title="Add a preset from a JSON file">Import…</button>
       </div>
-      <p class="hint">A preset is a snapshot of every setting below. Saving under an existing name replaces it. Importing never replaces one: a number is appended to the name.</p>
+      <p class="hint">Click a preset to apply it. A preset is a snapshot of every setting below; ● marks the applied one once the settings differ from it. Built-in presets are read-only.</p>
     </div>
+    <div id="preset_menu" hidden></div>
   </details>
 
   <fieldset id="all">
+
+    <details class="card" data-card="palette">
+      <summary class="head">
+        <h2>Palette</h2>
+        <input type="checkbox" class="switch" id="pal_enabled" title="Recolor the application palette (experimental)">
+      </summary>
+      <div class="body">
+        <fieldset id="palette_fs">
+        <table class="states">
+          <thead><tr><th>Native widgets</th><th>Background</th><th>Text</th></tr></thead>
+          <tbody id="pal_roles"></tbody>
+        </table>
+        <div class="row">
+          <div class="label">Lines<small>frames and bevels, one color: no gradient</small></div>
+          <span data-swatch="pal_lines" title="Lines"></span>
+        </div>
+        <div class="row">
+          <div class="label">Gradient<small>light end of the panel gradient, toward Lines; flat when unset</small></div>
+          <span data-swatch="pal_gradient" title="Gradient"></span>
+        </div>
+        <p class="hint">Experimental. Unset keeps SketchUp's color. Reaches the panels, fields and lists the style sheet cannot isolate; the style sheet rules above still win. The document and panel tab bars, the Measurements box and the comments panel keep SketchUp's own colors.</p>
+        </fieldset>
+      </div>
+    </details>
 
     <details class="card" data-card="toolbars">
       <summary class="head">
@@ -356,6 +432,16 @@
             <span class="value" id="bar_padding_v"></span>
           </div>
 
+          <div class="row">
+            <div class="label">Move handle<small>docked toolbars only, SketchUp's dots recolored</small></div>
+            <div class="segmented" id="handle_style">
+              <button type="button" data-v="native">Native</button>
+              <button type="button" data-v="dots">Dots</button>
+              <button type="button" data-v="none">None</button>
+            </div>
+            <span data-swatch="handle_color" title="Move handle color"></span>
+          </div>
+
           <div class="sub">Toolbar area</div>
           <div class="row">
             <div class="label">Background<small>behind the toolbars, whatever the scope</small></div>
@@ -391,8 +477,8 @@
         </table>
         <p class="hint">× native, ∅ none (transparent). A background replaces the native tab frame; size and centered title are kept.</p>
         <div class="row">
-          <div class="label">Strip<small>behind the tabs</small></div>
-          <span data-swatch="tabs_strip" title="Strip behind the tabs"></span>
+          <div class="label">Background<small>behind the tabs</small></div>
+          <span data-swatch="tabs_background" title="Background behind the tabs"></span>
         </div>
         <div class="row">
           <div class="label">Frame<small>around the 3D view; ∅ none, edge to edge</small></div>
@@ -467,11 +553,11 @@
         </table>
         <p class="hint">Below the document tabs, when the model has scenes. As for document tabs, a background replaces the native tab frame.</p>
         <div class="row">
-          <div class="label">Strip<small>around the tabs; needs a frame color or ∅ (Document tabs), native frame keeps it white</small></div>
-          <span data-swatch="sc_strip" title="Strip around the scene tabs"></span>
+          <div class="label">Background<small>around the tabs; needs a frame color or ∅ (Document tabs), native frame keeps it white</small></div>
+          <span data-swatch="sc_background" title="Background around the scene tabs"></span>
         </div>
         <div class="row">
-          <div class="label">Line<small>under the strip</small></div>
+          <div class="label">Line<small>under the tabs</small></div>
           <span data-swatch="sc_line" title="Line under the scene tabs"></span>
         </div>
         <div class="row">
@@ -482,7 +568,7 @@
 
         <div class="sub">Search button</div>
         <table class="states">
-          <thead><tr><th>State</th><th>Background</th><th>Border</th></tr></thead>
+          <thead><tr><th>State</th><th>Background</th><th>Border</th><th>Icon</th></tr></thead>
           <tbody id="sc_search_states"></tbody>
         </table>
         <div class="row">
@@ -657,30 +743,6 @@
       </div>
     </details>
 
-    <details class="card" data-card="palette">
-      <summary class="head">
-        <h2>Palette</h2>
-        <input type="checkbox" class="switch" id="pal_enabled" title="Recolor the application palette (experimental)">
-      </summary>
-      <div class="body">
-        <fieldset id="palette_fs">
-        <table class="states">
-          <thead><tr><th>Native widgets</th><th>Background</th><th>Text</th></tr></thead>
-          <tbody id="pal_roles"></tbody>
-        </table>
-        <div class="row">
-          <div class="label">Lines<small>frames and bevels, one color: no gradient</small></div>
-          <span data-swatch="pal_lines" title="Lines"></span>
-        </div>
-        <div class="row">
-          <div class="label">Gradient<small>light end of the panel gradient, toward Lines; flat when unset</small></div>
-          <span data-swatch="pal_gradient" title="Gradient"></span>
-        </div>
-        <p class="hint">Experimental. Unset keeps SketchUp's color. Reaches the panels, fields and lists the style sheet cannot isolate; the style sheet rules above still win. The document and panel tab bars, the Measurements box and the comments panel keep SketchUp's own colors.</p>
-        </fieldset>
-      </div>
-    </details>
-
     <details class="card" data-card="extra">
       <summary>Extra QSS <span class="hint">appended as is</span></summary>
       <div class="body">
@@ -707,12 +769,13 @@
 </footer>
 
 <script>
-  const STATES = ['hover', 'checked', 'pressed'];
+  const STATES = ['normal', 'hover', 'checked', 'pressed']; // toolbar buttons ; normal unset = native
   const KEYS = ['background', 'border'];
   const TAB_STATES = ['normal', 'hover', 'selected'];
   const TAB_KEYS = ['background', 'text'];
   const PLUS_STATES = ['normal', 'hover', 'pressed'];
   const PLUS_KEYS = ['background', 'border', 'text'];
+  const SEARCH_KEYS = ['background', 'border', 'icon']; // icon : the lens color, '' = native
   const CLOSE_STATES = ['hover', 'pressed'];
   const CLOSE_KEYS = ['background', 'color'];
   const SB_STATES = ['hover', 'pressed'];
@@ -735,25 +798,60 @@
   // none : also offer 'transparent' (no background / no border), for colors whose unset is native.
   const swatchHtml = (key, title, none = false) =>
     `<span class="swatch off" id="${key}">` +
-      `<span class="chip"><input type="color" title="${title}"></span>` +
+      `<span class="field"><span class="chip"><input type="color" title="${title}"></span>` +
+      `<input type="text" class="hex" title="${title} : #rrggbb${none ? ' or none' : ''}, empty to unset" placeholder="unset" spellcheck="false" autocomplete="off" maxlength="11"></span>` +
       (none ? `<button type="button" class="nil" title="None (transparent)">∅</button>` : '') +
       `<button type="button" class="clear" title="Unset (native)">×</button></span>`;
+  // Typed text → color : '#rgb', '#rrggbb' (the # optional), 'none' / 'transparent' where offered, '' to unset ; null when invalid.
+  const parseHex = (s, none) => {
+    s = s.trim().toLowerCase();
+    if (s === '') return '';
+    if (none && (s === 'none' || s === 'transparent')) return 'transparent';
+    const m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/.exec(s);
+    if (!m) return null;
+    return '#' + (m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1]);
+  };
+  const hexText = (v) => (v === 'transparent' ? 'none' : v || '');
   const bindSwatch = (key) => {
     const sw = $(key);
-    const input = sw.querySelector('input');
-    input.addEventListener('input', () => { setColor(key, input.value); preview(); });
-    input.addEventListener('change', () => commit());
+    const picker = sw.querySelector('input[type=color]');
+    const text = sw.querySelector('.hex');
+    const none = !!sw.querySelector('.nil');
+    picker.addEventListener('input', () => { setColor(key, picker.value); preview(); });
+    picker.addEventListener('change', () => commit());
+    // Live preview while typing, saved on Enter / blur ; an invalid entry goes back to the current value.
+    text.addEventListener('input', () => {
+      const v = parseHex(text.value, none);
+      text.classList.toggle('bad', v === null);
+      if (v !== null && v !== '') { setColor(key, v, true); preview(); }
+    });
+    text.addEventListener('change', () => {
+      const v = parseHex(text.value, none);
+      if (v === null) { setColor(key, colors[key] || ''); preview(); return; }
+      setColor(key, v);
+      commit();
+    });
+    text.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') text.blur();
+      if (e.key === 'Escape') { text.value = hexText(colors[key]); text.classList.remove('bad'); text.blur(); }
+    });
     sw.querySelector('.clear').addEventListener('click', () => { setColor(key, ''); commit(); });
     const nil = sw.querySelector('.nil');
     if (nil) nil.addEventListener('click', () => { setColor(key, 'transparent'); commit(); });
   };
-  const setColor = (key, v) => {
+  // typing : the text field is the source, leave what is being typed alone.
+  const setColor = (key, v, typing = false) => {
     colors[key] = v;
     const sw = $(key);
     sw.classList.toggle('off', !v);
     sw.classList.toggle('none', v === 'transparent');
     sw.querySelector('.chip').style.setProperty('--c', v || 'transparent');
-    if (v && v !== 'transparent') sw.querySelector('input').value = v;
+    if (v && v !== 'transparent') sw.querySelector('input[type=color]').value = v;
+    if (!typing) {
+      const text = sw.querySelector('.hex');
+      text.value = hexText(v);
+      text.classList.remove('bad');
+    }
   };
   const hex = (v) => (/^(#[0-9a-f]{6}|transparent)$/i.test(v || '') ? v.toLowerCase() : '');
 
@@ -788,11 +886,10 @@
     $('scene_states').appendChild(tr);
     TAB_KEYS.forEach((k) => bindSwatch(`sc_${st}_${k}`));
   });
-  // The search button's icon is a pixmap : background and border only.
-  [['sc_search', 'scene search button', KEYS], ['sc_plus', 'scene + button', PLUS_KEYS]].forEach(([prefix, title, keys]) => {
+  [['sc_search', 'scene search button', SEARCH_KEYS], ['sc_plus', 'scene + button', PLUS_KEYS]].forEach(([prefix, title, keys]) => {
     PLUS_STATES.forEach((st) => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${cap(st)}</td>` + keys.map((k) => `<td>${swatchHtml(`${prefix}_${st}_${k}`, `${cap(st)} ${title} ${k}`, k !== 'text')}</td>`).join('');
+      tr.innerHTML = `<td>${cap(st)}</td>` + keys.map((k) => `<td>${swatchHtml(`${prefix}_${st}_${k}`, `${cap(st)} ${title} ${k}`, k !== 'text' && k !== 'icon')}</td>`).join('');
       $(`${prefix}_states`).appendChild(tr);
       keys.forEach((k) => bindSwatch(`${prefix}_${st}_${k}`));
     });
@@ -847,7 +944,7 @@
   // Segmented controls
   const segValue = (id) => ($(id).querySelector('.on') || {}).dataset?.v;
   const setSeg = (id, v) => $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === String(v)));
-  ['tb_scope', 'tb_border_width', 'bar_border_width', 'frame_width'].forEach((id) => $(id).addEventListener('click', (e) => {
+  ['tb_scope', 'tb_border_width', 'bar_border_width', 'handle_style', 'frame_width'].forEach((id) => $(id).addEventListener('click', (e) => {
     const b = e.target.closest('button');
     if (!b) return;
     setSeg(id, b.dataset.v);
@@ -864,9 +961,9 @@
   const btnStyle = (st) => {
     const w = segValue('tb_border_width') | 0;
     const r = $('tb_radius').value;
-    if (st === 'normal') return `border-width:${w}px;border-radius:${r}px`;
-    const bg = colors[`${st}_background`] || 'transparent';
-    const bd = (w && colors[`${st}_border`]) || 'transparent';
+    // A state without its own color falls back to normal (as in QSS).
+    const bg = colors[`${st}_background`] || colors.normal_background || 'transparent';
+    const bd = (w && (colors[`${st}_border`] || colors.normal_border)) || 'transparent';
     return `background:${bg};border-color:${bd};border-width:${w}px;border-radius:${r}px`;
   };
   const btn = (st, i) => `<div class="btn" style="${btnStyle(st)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONS[i]}</svg></div>`;
@@ -874,15 +971,23 @@
     const i = $('separator_inset').value;
     return `<div class="sep" style="background:${colors.separator_color || 'transparent'};background-clip:content-box;padding:${i}px 2px ${i}px 3px"></div>`;
   };
+  // Move handle : the Fusion grip (2 x 6 dots of 1 px, 3 px apart), as the SVG Theme writes ; native approximated.
+  const handlePreview = () => {
+    const st = segValue('handle_style') || 'native';
+    const c = st === 'native' ? '#979797' : colors.handle_color;
+    if (st === 'none' || !c) return '<div class="hdl"></div>';
+    const shapes = [0, 3].flatMap((x) => [0, 3, 6, 9, 12, 15].map((y) => `<rect x="${x}" y="${y}" width="1" height="1"/>`)).join('');
+    return `<div class="hdl"><svg width="4" height="16" viewBox="0 0 4 16" style="margin-right:5px"><g fill="${c}">${shapes}</g></svg></div>`;
+  };
   const preview = () => {
-    $('preview').innerHTML = ['normal', ...STATES].map((st, i) =>
+    $('preview').innerHTML = STATES.map((st, i) =>
       `<figure>${btn(st, i)}<figcaption>${st}</figcaption></figure>`).join('');
     const bg = colors.bar_background, bd = colors.bar_border;
     const bw = bd ? (segValue('bar_border_width') | 0) || 1 : 1;
     const pad = Math.max($('bar_padding').value | 0, bw) - bw;
-    const barStyle = `background:${bg || 'transparent'};border:${bw}px solid ${bd || 'transparent'};padding:${pad}px ${pad}px ${pad}px ${pad + 9}px;border-radius:${(bg || bd) ? $('bar_radius').value : 0}px`;
+    const barStyle = `background:${bg || 'transparent'};border:${bw}px solid ${bd || 'transparent'};padding:${pad}px ${pad}px ${pad}px ${pad}px;border-radius:${(bg || bd) ? $('bar_radius').value : 0}px`;
     $('bar_preview').style.background = colors.area_background || '';
-    $('bar_preview').innerHTML = `<div class="bar" style="${barStyle}">${btn('normal', 0)}${sep()}${btn('checked', 1)}${btn('normal', 2)}${sep()}${btn('normal', 3)}</div>`;
+    $('bar_preview').innerHTML = `<div class="bar" style="${barStyle}">${handlePreview()}${btn('normal', 0)}${sep()}${btn('checked', 1)}${btn('normal', 2)}${sep()}${btn('normal', 3)}</div>`;
     // Tabs : selected wins over hover, a state without its own color falls back to normal (as in QSS).
     const tab = (label, sts) => {
       const pick = (k) => sts.reduce((v, st) => colors[`tab_${st}_${k}`] || v, '');
@@ -903,7 +1008,7 @@
       x.style.borderRadius = bg ? `${$('close_radius').value}px` : '';
       x.innerHTML = c ? `<svg viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="${c}" stroke-width="1.6" stroke-linecap="round"/></svg>` : '<span>×</span>';
     };
-    $('tabs_preview').style.background = colors.tabs_strip || '';
+    $('tabs_preview').style.background = colors.tabs_background || '';
     // '+' : normal state shown ; hovering the preview shows hover, pressing it pressed.
     const plusStyle = (sts) => {
       const pick = (k) => sts.reduce((v, st) => colors[`plus_${st}_${k}`] || v, '');
@@ -960,7 +1065,7 @@
     };
     // The strip is the frame's background : the document strip with no frame, white over the native frame.
     const frame = colors.frame_color;
-    const strip = frame ? (colors.sc_strip || (frame === 'transparent' ? colors.tabs_strip : '') || '#f2f2f2') : '#ffffff';
+    const strip = frame ? (colors.sc_background || (frame === 'transparent' ? colors.tabs_background : '') || '#f2f2f2') : '#ffffff';
     const p = $('scenes_preview');
     p.style.background = strip;
     p.style.paddingTop = `${10 + (($('sc_height').value | 0) - 33)}px`;
@@ -987,7 +1092,11 @@
     };
     p.querySelectorAll('.sbtn').forEach((b) => {
       const prefix = b.classList.contains('add') ? 'sc_plus' : 'sc_search';
-      const set = (sts) => () => { b.style.cssText = buttonStyle(prefix, sts, $(`${prefix}_radius`).value); boxes[prefix](b); };
+      const lensSvg = b.querySelector('svg');
+      const set = (sts) => () => {
+        b.style.cssText = buttonStyle(prefix, sts, $(`${prefix}_radius`).value); boxes[prefix](b);
+        if (lensSvg) lensSvg.setAttribute('stroke', sts.reduce((v, st) => colors[`sc_search_${st}_icon`] || v, '') || '#1f5d99');
+      };
       set(['normal'])();
       b.addEventListener('mouseenter', set(['normal', 'hover']));
       b.addEventListener('mouseleave', set(['normal']));
@@ -1001,6 +1110,7 @@
     $('tb').disabled = !$('tb_enabled').checked;
     SECTIONS.forEach(([fs, sw]) => { $(fs).disabled = !$(sw).checked; });
     $('titles_row').style.display = segValue('tb_scope') === 'titles' ? '' : 'none';
+    $('handle_color').style.visibility = segValue('handle_style') === 'dots' ? '' : 'hidden';
     ['tb_radius', 'bar_radius', 'bar_padding', 'separator_inset', 'plus_radius', 'plus_gap', 'plus_size', 'close_size', 'close_radius', 'sc_height', 'sc_search_width', 'sc_search_height', 'sc_search_radius', 'sc_plus_gap', 'sc_plus_size', 'sc_plus_radius', 'sb_radius', 'sbar_width', 'sbar_radius', 'mb_radius'].forEach((id) => { $(`${id}_v`).textContent = `${$(id).value} px`; });
     ['plus_font', 'sc_plus_font'].forEach((id) => { $(`${id}_v`).textContent = ($(id).value | 0) > 9 ? `${$(id).value} px` : 'native'; });
     preview();
@@ -1022,12 +1132,15 @@
     $('bar_radius').value = bar.radius;
     $('bar_padding').value = bar.padding;
     setColor('separator_color', hex(sp.color));
+    const hd = tb.handle || {};
+    setSeg('handle_style', hd.style || 'native');
+    setColor('handle_color', hex(hd.color));
     setColor('area_background', hex((tb.area || {}).background));
     $('separator_inset').value = sp.inset;
     const tabs = t.tabs || {};
     $('tabs_enabled').checked = tabs.enabled !== false;
     TAB_STATES.forEach((st) => TAB_KEYS.forEach((k) => setColor(`tab_${st}_${k}`, hex((tabs[st] || {})[k]))));
-    setColor('tabs_strip', hex(tabs.strip));
+    setColor('tabs_background', hex(tabs.background));
     setColor('frame_color', hex((tabs.frame || {}).color));
     setSeg('frame_width', (tabs.frame || {}).width || 1);
     const plus = tabs.plus || {};
@@ -1044,13 +1157,13 @@
     const sc = t.scenes || {};
     $('sc_enabled').checked = sc.enabled !== false;
     TAB_STATES.forEach((st) => TAB_KEYS.forEach((k) => setColor(`sc_${st}_${k}`, hex((sc[st] || {})[k]))));
-    setColor('sc_strip', hex(sc.strip));
+    setColor('sc_background', hex(sc.background));
     setColor('sc_line', hex(sc.line));
     $('sc_height').value = sc.height ?? 28;
     const scp = sc.plus || {}, scs = sc.search || {};
     PLUS_STATES.forEach((st) => {
       PLUS_KEYS.forEach((k) => setColor(`sc_plus_${st}_${k}`, hex((scp[st] || {})[k])));
-      KEYS.forEach((k) => setColor(`sc_search_${st}_${k}`, hex((scs[st] || {})[k])));
+      SEARCH_KEYS.forEach((k) => setColor(`sc_search_${st}_${k}`, hex((scs[st] || {})[k])));
     });
     $('sc_plus_radius').value = scp.radius ?? 4;
     $('sc_plus_gap').value = scp.gap ?? 0;
@@ -1103,6 +1216,7 @@
         padding: parseInt($('bar_padding').value, 10) || 2,
       },
       area: { background: colors.area_background || '' },
+      handle: { style: segValue('handle_style') || 'native', color: colors.handle_color || '' },
       separator: {
         color: colors.separator_color || '',
         inset: parseInt($('separator_inset').value, 10) || 0,
@@ -1128,14 +1242,14 @@
       CLOSE_KEYS.forEach((k) => { close[st][k] = colors[`close_${st}_${k}`] || ''; });
     });
     const frame = { color: colors.frame_color || '', width: parseInt(segValue('frame_width'), 10) || 1 };
-    const tabs = { enabled: $('tabs_enabled').checked, strip: colors.tabs_strip || '', frame, plus, close };
+    const tabs = { enabled: $('tabs_enabled').checked, background: colors.tabs_background || '', frame, plus, close };
     TAB_STATES.forEach((st) => {
       tabs[st] = {};
       TAB_KEYS.forEach((k) => { tabs[st][k] = colors[`tab_${st}_${k}`] || ''; });
     });
     const scenes = {
       enabled: $('sc_enabled').checked,
-      strip: colors.sc_strip || '',
+      background: colors.sc_background || '',
       line: colors.sc_line || '',
       height: parseInt($('sc_height').value, 10) || 33,
       plus: { radius: parseInt($('sc_plus_radius').value, 10) || 0, gap: parseInt($('sc_plus_gap').value, 10) || 0,
@@ -1151,7 +1265,7 @@
       scenes.plus[st] = {};
       scenes.search[st] = {};
       PLUS_KEYS.forEach((k) => { scenes.plus[st][k] = colors[`sc_plus_${st}_${k}`] || ''; });
-      KEYS.forEach((k) => { scenes.search[st][k] = colors[`sc_search_${st}_${k}`] || ''; });
+      SEARCH_KEYS.forEach((k) => { scenes.search[st][k] = colors[`sc_search_${st}_${k}`] || ''; });
     });
     const statusbar = { enabled: $('sb_enabled').checked, background: colors.sb_background || '', text: colors.sb_text || '', radius: parseInt($('sb_radius').value, 10) || 0 };
     SB_STATES.forEach((st) => {
@@ -1178,49 +1292,146 @@
     sketchup.change(JSON.stringify(collect()));
   };
 
-  // Presets
-  let presetNames = [];
-  const presetRefresh = () => {
-    const sel = $('preset_list').value;
-    const name = $('preset_name').value.trim();
-    $('preset_load').disabled = $('preset_delete').disabled = $('preset_export').disabled = !sel;
-    $('preset_save').disabled = !name;
-    $('preset_save').textContent = presetNames.includes(name) ? 'Replace' : 'Save current';
-    $('preset_delete').textContent = 'Delete';
-    $('preset_delete').classList.remove('danger');
-    $('preset_hint').textContent = presetNames.length ? `${presetNames.length} saved` : 'none saved';
-  };
-  const presetFill = (names, selected) => {
-    presetNames = names;
+  // Presets : built-in ones (presets/*.json, read-only) then the saved ones ; a click applies.
+  const presets = { builtin: [], saved: [], active: null, modified: false };
+  const isBuiltin = (n) => presets.builtin.includes(n);
+  const presetExists = (n) => isBuiltin(n) || presets.saved.includes(n);
+  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const presetRender = () => {
     const list = $('preset_list');
-    const keep = selected ?? list.value;
-    list.innerHTML = names.length ? '' : '<option value="">No preset yet</option>';
-    names.forEach((n) => list.add(new Option(n, n)));
-    if (names.includes(keep)) list.value = keep;
-    if (selected !== null && selected !== undefined) $('preset_name').value = selected;
-    presetRefresh();
+    const row = (n) => {
+      const active = n === presets.active;
+      const state = active ? (presets.modified ? '<span class="state modified">modified</span>' : '<span class="state">applied</span>') : '';
+      return `<div class="prow${active ? ' active' : ''}" data-name="${esc(n)}" title="${active && !presets.modified ? '' : 'Apply ' + esc(n)}">` +
+        `<span class="name">${esc(n)}</span>${state}<button type="button" class="more" title="Actions">⋯</button></div>`;
+    };
+    list.innerHTML =
+      (presets.builtin.length ? '<div class="group">Built-in</div>' + presets.builtin.map(row).join('') : '') +
+      '<div class="group">Saved</div>' + (presets.saved.length ? presets.saved.map(row).join('') : '<div class="empty">None yet: save the current settings below.</div>');
+    $('preset_hint').textContent = presets.active
+      ? `${presets.active}${presets.modified ? ' · modified' : ''}`
+      : `${presets.builtin.length} built-in, ${presets.saved.length} saved`;
   };
-  $('preset_list').addEventListener('change', () => { $('preset_name').value = $('preset_list').value; presetRefresh(); });
-  $('preset_name').addEventListener('input', presetRefresh);
-  $('preset_name').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('preset_save').click(); });
-  $('preset_load').addEventListener('click', () => sketchup.preset_load($('preset_list').value));
+
+  // A row click applies ; the ⋯ button opens the menu ; a row being renamed ignores both.
+  $('preset_list').addEventListener('click', (e) => {
+    const r = e.target.closest('.prow');
+    if (!r || r.querySelector('input')) return;
+    if (e.target.closest('.more')) { menuOpen(r, e.target.closest('.more')); return; }
+    if (r.dataset.name === presets.active && !presets.modified) return;
+    sketchup.preset_load(r.dataset.name);
+  });
+
+  // ⋯ menu
+  let menuRow = null;
+  const menuClose = () => {
+    $('preset_menu').hidden = true;
+    if (menuRow) menuRow.classList.remove('menu-open');
+    menuRow = null;
+  };
+  const menuOpen = (r, btn) => {
+    if (menuRow === r) { menuClose(); return; }
+    menuClose();
+    const n = r.dataset.name;
+    const items = isBuiltin(n)
+      ? [['export', 'Export…']]
+      : [['update', 'Update with current settings'], ['rename', 'Rename'], ['export', 'Export…'], null, ['delete', 'Delete']];
+    const m = $('preset_menu');
+    m.innerHTML = items.map((i) => (i ? `<button type="button" data-act="${i[0]}"${i[0] === 'delete' ? ' class="danger"' : ''}>${i[1]}</button>` : '<hr>')).join('');
+    m.hidden = false;
+    // Right-aligned under the button, inside the card.
+    const card = r.closest('.card').getBoundingClientRect();
+    const b = btn.getBoundingClientRect();
+    m.style.top = `${b.bottom - card.top + 2}px`;
+    m.style.right = `${card.right - b.right}px`;
+    menuRow = r;
+    r.classList.add('menu-open');
+  };
+  $('preset_menu').addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b || !menuRow) return;
+    const r = menuRow;
+    const n = r.dataset.name;
+    switch (b.dataset.act) {
+      case 'update': sketchup.preset_update(n); break;
+      case 'export': sketchup.preset_export(n); break;
+      case 'rename': menuClose(); presetRename(r); return;
+      case 'delete':
+        // Two clicks : the first one arms the item (no confirm() dialog in an HtmlDialog).
+        if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Click again to delete'; return; }
+        sketchup.preset_delete(n);
+        break;
+    }
+    menuClose();
+  });
+  document.addEventListener('mousedown', (e) => { if (menuRow && !e.target.closest('#preset_menu, .more')) menuClose(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') menuClose(); });
+  window.addEventListener('scroll', menuClose, true);
+  document.querySelector('[data-card=presets]').addEventListener('toggle', menuClose);
+
+  // Rename in place : Enter commits, Escape or leaving the field cancels.
+  const presetRename = (r) => {
+    const n = r.dataset.name;
+    const span = r.querySelector('.name');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = n;
+    input.spellcheck = false;
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+    const valid = () => { const v = input.value.trim(); return v && (v === n || !presetExists(v)); };
+    input.addEventListener('input', () => input.classList.toggle('bad', !valid()));
+    input.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter' && valid()) {
+        const v = input.value.trim();
+        if (v === n) presetRender(); else sketchup.preset_rename(n, v);
+      }
+      if (e.key === 'Escape') presetRender();
+    });
+    input.addEventListener('blur', () => setTimeout(() => { if (input.isConnected) presetRender(); }, 0));
+  };
+
+  // New preset from the current settings : a saved name is replaced, a built-in one is refused.
+  const newRefresh = () => {
+    const v = $('preset_name').value.trim();
+    const builtin = isBuiltin(v);
+    $('preset_name').classList.toggle('bad', builtin);
+    $('preset_save').disabled = !v || builtin;
+    $('preset_save').textContent = presets.saved.includes(v) ? 'Replace' : 'Save';
+    $('preset_save').title = builtin ? 'A built-in preset has this name: choose another one' : '';
+  };
+  const newClose = () => { $('preset_new').hidden = true; $('preset_add').disabled = false; };
+  $('preset_add').addEventListener('click', () => {
+    $('preset_new').hidden = false;
+    $('preset_add').disabled = true;
+    $('preset_name').value = '';
+    newRefresh();
+    $('preset_name').focus();
+  });
+  $('preset_name').addEventListener('input', newRefresh);
+  $('preset_name').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !$('preset_save').disabled) $('preset_save').click();
+    if (e.key === 'Escape') { e.stopPropagation(); newClose(); }
+  });
   $('preset_save').addEventListener('click', () => {
-    const name = $('preset_name').value.trim();
-    if (name) sketchup.preset_save(name, JSON.stringify(collect()));
+    const v = $('preset_name').value.trim();
+    if (!v || isBuiltin(v)) return;
+    sketchup.preset_save(v);
+    newClose();
   });
-  // Two clicks : the first one arms the button (no confirm() dialog in an HtmlDialog).
-  $('preset_delete').addEventListener('click', () => {
-    const b = $('preset_delete');
-    if (!b.classList.contains('danger')) { b.classList.add('danger'); b.textContent = 'Confirm delete'; return; }
-    sketchup.preset_delete($('preset_list').value);
-  });
-  $('preset_delete').addEventListener('blur', presetRefresh);
-  $('preset_export').addEventListener('click', () => sketchup.preset_export($('preset_list').value));
+  $('preset_cancel').addEventListener('click', newClose);
   $('preset_import').addEventListener('click', () => sketchup.preset_import());
 
   // Ruby -> JS
   window.receive = (state) => {
-    if (state.presets) presetFill(state.presets, state.preset);
+    if (state.presets) {
+      Object.assign(presets, { builtin: state.builtin_presets || [], saved: state.presets, active: state.active_preset, modified: !!state.modified });
+      menuClose();
+      presetRender();
+    }
     if (state.reload) fill(state.theme);
     $('qss').value = state.qss || '/* nothing applied */';
     const s = $('status');

@@ -16,7 +16,7 @@ module Ladb
 
       ex = SketchupExtension.new('Styler', File.join(File.dirname(__FILE__), 'ladb_styler', 'main'))
       ex.description = 'Prototype: customize the style of the SketchUp interface (toolbars first) with Qt style sheets.'
-      ex.version = '0.1.3'
+      ex.version = '0.1.4'
       VERSION = ex.version # shown in the settings dialog title
       ex.creator = 'Boris Beaulant'
       ex.copyright = '2026 Boris Beaulant'

@@ -25,6 +25,21 @@
 # a 1 px line is its background squeezed by margins. SketchUp's own separator
 # color is #979797 (QColor constant read from ToolBarSeparator::paintEvent).
 #
+# The move handle of a docked, unlocked toolbar is painted by
+# qtapputils::ToolBar::paintEvent through style()->drawPrimitive(
+# PE_IndicatorToolBarHandle, …, toolbar) in ToolBarLayout::GetHandleArea(), its
+# extent being style()->pixelMetric(PM_ToolBarHandleExtent) (read in the
+# binary) : its rule is the toolbar's '::handle', ':horizontal' / ':vertical'
+# as the separators. A rule replaces the native drawing : the dots are an SVG
+# image (#assets), the extent stays native (no width / height). They copy the
+# Fusion grip : 2 columns x 6 rows of 1 px dots, 3 px apart, the columns at
+# center - 3 and center (QFusionStyle::drawPrimitive) ; the image being
+# centered, a margin on the buttons' side moves it there (HANDLE_MARGIN, 5 px
+# matched by eye against the native grip).
+#
+# A 'normal' button color moves the shared geometry rule to every button
+# (no pseudo-state) : the states only add their colors over it.
+#
 # Behind the docked toolbars is CMainFrame's central widget, a plain QWidget
 # ('.QWidget' : exact class, CMainFrame's other children are menus, dialogs…)
 # laid out by ToolBarContainerLayout, the dock area (KDDW MainWindow) below the
@@ -83,7 +98,10 @@
 # 26 x 22 (QSS sizes it from its icon), so min = max = size - 2 pins it (its
 # own size, measured 24 x 18 .. 56 x 32, centered on the 32 px band, the tabs
 # following its width). Both buttons take their own colors ('QPushButton' and
-# 'QToolButton' tell them apart).
+# 'QToolButton' tell them apart). The lens is a pixmap that 'color' leaves alone,
+# but the QSS 'icon' property (QPushButton only, Qt >= 5.15) replaces it with a
+# PNG file (see _lens_qss), per state, and removing the rule brings the native one back
+# (measured ; 'qproperty-icon' would stick).
 # The band is 33 px, its height set by ViewerWidget : min = max moves it and
 # the 3D view follows, the tabs keeping their bottom on it (below 28 px the
 # tab bar itself shrinks, measured). The search button stays centered in it.
@@ -110,12 +128,15 @@
 # rounded background with.
 
 require 'json'
+require 'zlib'
 
 module Ladb
   module Styler
     module Theme
 
       STATES = %w[hover checked pressed].freeze # later states win when combined (checked:hover…)
+      HANDLE_STYLES = %w[native dots none].freeze
+      HANDLE_MARGIN = 5 # px on the buttons' side, the dots centered in what is left (matched by eye)
       PLUS_SIZE = 27 # native '+' box (measured)
       PLUS_TOP = 3   # its native top
       SEARCH_BOX = [38, 26].freeze # native box of the scene search button (measured)
@@ -135,17 +156,19 @@ module Ladb
           'titles' => [],       # toolbar names (UI::Toolbar.new) matched by prefix when scope = 'titles'
           'radius' => 4,
           'border_width' => 1,  # 0..2 (0 and 1 measured)
+          'normal' => { 'background' => '', 'border' => '' },  # '' = native (no rule)
           'hover' => { 'background' => '#dfecf8', 'border' => '#3e7ab6' },
           'checked' => { 'background' => '#c7ddf2', 'border' => '#3e7ab6' },
           'pressed' => { 'background' => '#c7ddf2', 'border' => '#3e7ab6' },
-          'bar' => { 'background' => '#f2f2f2', 'border' => '', 'border_width' => 1, 'radius' => 0,  # '' = none ; width 1..2
+          'bar' => { 'background' => '', 'border' => '', 'border_width' => 1, 'radius' => 0,  # '' = none ; width 1..2
                      'padding' => 8 },                                                                 # edge to buttons, 2 = native
           'area' => { 'background' => '#f2f2f2' },  # behind the toolbars, whatever the scope ; '' = native
           'separator' => { 'color' => '#cfcfcf', 'inset' => 6 },           # '' = hidden ; inset at each end, 0..12
+          'handle' => { 'style' => 'native', 'color' => '#979797' },       # move handle : HANDLE_STYLES
         },
         'tabs' => {                      # document tabs above the 3D view ; '' = native
           'enabled' => true,
-          'strip' => '#f2f2f2',          # behind the tabs
+          'background' => '#f2f2f2',     # behind the tabs (the strip)
           'normal' => { 'background' => '#f2f2f2', 'text' => '#000000' },
           'hover' => { 'background' => '#c2c2c2', 'text' => '' },
           'selected' => { 'background' => '#c7ddf2', 'text' => '' },
@@ -172,7 +195,7 @@ module Ladb
         },
         'scenes' => {                    # scene tabs below the document tabs ; '' = native
           'enabled' => true,
-          'strip' => '#c7ddf2',          # around the tabs (the frame's background) : with a frame color or none only
+          'background' => '#c7ddf2',     # around the tabs (the strip, the frame's background) : with a frame color or none only
           'line' => '#3e7ab6',           # 1 px line under the strip
           'height' => 28,                # of the band, 28..64 px ; the 3D view follows (SCENE_BAND = native)
           'normal' => { 'background' => 'transparent', 'text' => '' },
@@ -187,13 +210,14 @@ module Ladb
             'hover' => { 'background' => '#3e7ac0', 'border' => '', 'text' => '#ffffff' },
             'pressed' => { 'background' => '#3e7ab6', 'border' => '', 'text' => '' },
           },
-          'search' => {         # the search button, left of the tabs ; its icon is a pixmap, no text color
+          'search' => {         # the search button, left of the tabs
             'radius' => 4,      # with a border color only
             'width' => 31,      # 24..56 px, the tabs follow (SEARCH_BOX = native)
             'height' => 28,     # 18..32 px
-            'normal' => { 'background' => 'transparent', 'border' => 'transparent' },
-            'hover' => { 'background' => '', 'border' => '' },
-            'pressed' => { 'background' => '', 'border' => '' },
+            # icon : '#rrggbb' draws a plain lens (QSS 'icon', not sticky) ; '' = native pixmap (normal), as normal (hover / pressed)
+            'normal' => { 'background' => 'transparent', 'border' => 'transparent', 'icon' => '#1f5d99' },
+            'hover' => { 'background' => '', 'border' => '', 'icon' => '#0d3b66' },
+            'pressed' => { 'background' => '', 'border' => '', 'icon' => '' },
           },
         },
         'statusbar' => {        # below the 3D view ; '' = native
@@ -236,7 +260,7 @@ module Ladb
           'title_bar' => '#1e4069', # '#rrggbb' main window title bar (AppKit, see macos.rb) ; '' = native
         },
         'palette' => {          # application palette roles (Qt::ROLES names, see qt.rb) ; '' = SketchUp's
-          'enabled' => false,   # experimental, off by default : these values match the light defaults above
+          'enabled' => true,    # experimental : these values match the light defaults above
           'window' => '#f2f2f2', 'window_text' => '#000000',
           'base' => '#ffffff', 'alternate_base' => '#f7f7f7', 'text' => '#000000', 'placeholder_text' => '#8c8c8c',
           'button' => '#ffffff', 'button_text' => '#000000',
@@ -253,8 +277,18 @@ module Ladb
 
       # Missing keys (older saved theme) fall back to defaults ; the separate bevel colors
       # (before 'lines') are dropped.
+      # The document and scene tabs' 'strip' (before 'background') is renamed.
       def self.normalize(theme)
-        theme = _deep_merge(defaults, theme.is_a?(Hash) ? theme : {})
+        theme = theme.is_a?(Hash) ? theme : {}
+        %w[tabs scenes].each do |section|
+          h = theme[section]
+          next unless h.is_a?(Hash) && h.key?('strip')
+          h = h.dup
+          strip = h.delete('strip')
+          h['background'] = strip unless h.key?('background')
+          theme = theme.merge(section => h)
+        end
+        theme = _deep_merge(defaults, theme)
         LINE_ROLES.each { |role| theme['palette'].delete(role) }
         theme
       end
@@ -263,7 +297,7 @@ module Ladb
       def self.to_qss(theme, assets_dir = '.')
         theme = normalize(theme)
         return '' unless theme['enabled']
-        [_toolbar_qss(theme['toolbar']), _tabs_qss(theme['tabs'], assets_dir, theme['scenes']['enabled'] ? theme['scenes']['strip'] : ''), _scenes_qss(theme['scenes']),
+        [_toolbar_qss(theme['toolbar'], assets_dir), _tabs_qss(theme['tabs'], assets_dir, theme['scenes']['enabled'] ? theme['scenes']['background'] : ''), _scenes_qss(theme['scenes'], assets_dir),
          _statusbar_qss(theme['statusbar']), _scrollbars_qss(theme['scrollbars']), _messagebox_qss(theme['messagebox']), theme['extra_qss'].to_s.strip].reject(&:empty?).join("\n\n")
       end
 
@@ -279,18 +313,32 @@ module Ladb
            .merge(gradient ? { 'light' => gradient } : {})
       end
 
-      # { file name => SVG } the style sheet refers to (close cross colors).
+      # { file name => SVG } the style sheet refers to (close cross colors, toolbar handle).
       def self.assets(theme)
         theme = normalize(theme)
-        return {} unless theme['tabs']['enabled']
-        close = theme['tabs']['close']
-        [close['color'], close['hover']['color'], close['pressed']['color']].filter_map { |c| _hex(c) }.uniq
-          .to_h { |c| [_cross_name(c), _cross_svg(c)] }
+        assets = {}
+        if theme['tabs']['enabled']
+          close = theme['tabs']['close']
+          [close['color'], close['hover']['color'], close['pressed']['color']].filter_map { |c| _hex(c) }.uniq
+            .each { |c| assets[_cross_name(c)] = _cross_svg(c) }
+        end
+        tb = theme['toolbar']
+        style, color = _handle(tb['handle'])
+        if tb['enabled'] && color
+          %w[horizontal vertical].each { |o| assets[_handle_name(style, o, color)] = _handle_svg(style, o, color) }
+        end
+        sc = theme['scenes']
+        if sc['enabled']
+          PLUS_STATES.filter_map { |st| _hex(sc['search'][st]['icon']) }.uniq
+            .each { |c| assets[_lens_name(c)] = _lens_png(c) }
+          (c = _hex(sc['search']['normal']['icon'])) && assets[_lens_name(c, true)] = _lens_png(c, true)
+        end
+        assets
       end
 
       # -----
 
-      def self._toolbar_qss(tb)
+      def self._toolbar_qss(tb, assets_dir = '.')
         return '' unless tb['enabled']
 
         bars = _toolbar_selectors(tb)
@@ -299,12 +347,24 @@ module Ladb
         r = tb['radius'].to_i.clamp(0, 16)
 
         states = STATES.select { |st| tb[st].is_a?(Hash) }
-        all = ->(suffix = '') { states.flat_map { |st| buttons.map { |b| "#{b}:#{st}#{suffix}" } }.join(",\n") }
+        normal = tb['normal'].is_a?(Hash) ? tb['normal'] : {}
+        normal_bg = _color(normal['background'])
+        normal_bd = w > 0 && _color(normal['border'])
+        # A normal color styles every button : the geometry then goes on the plain selector.
+        all = if normal_bg || normal_bd
+                ->(suffix = '') { buttons.map { |b| "#{b}#{suffix}" }.join(",\n") }
+              else
+                ->(suffix = '') { states.flat_map { |st| buttons.map { |b| "#{b}:#{st}#{suffix}" } }.join(",\n") }
+              end
 
         css = []
         css << "/* Toolbars: geometry shared by every styled state */"
         css << "#{all.call} {\n  border: #{w > 0 ? "#{w}px solid transparent" : 'none'};\n  border-radius: #{r}px;\n  padding: #{-(1 + w)}px #{-(2 + w)}px #{-(2 + w)}px #{-(1 + w)}px;\n}"
         css << "#{all.call('[popupMode="1"]')} {\n  padding-right: #{10 - w}px;\n}"
+        decl = []
+        decl << "background-color: #{normal_bg};" if normal_bg
+        decl << "border-color: #{normal_bd};" if normal_bd
+        css << "/* Toolbars: buttons, normal state */\n#{buttons.join(",\n")} {\n  #{decl.join("\n  ")}\n}" unless decl.empty?
         states.each do |st|
           decl = []
           bg = _color(tb[st]['background'])
@@ -314,7 +374,8 @@ module Ladb
           next if decl.empty?
           css << "#{buttons.map { |b| "#{b}:#{st}" }.join(",\n")} {\n  #{decl.join("\n  ")}\n}"
         end
-        css.concat(_bar_qss(bars, tb['bar']), _separator_qss(bars, tb['separator']), _area_qss(tb['area']))
+        css.concat(_bar_qss(bars, tb['bar']), _separator_qss(bars, tb['separator']),
+                   _handle_qss(bars, tb['handle'], assets_dir), _area_qss(tb['area']))
         css.join("\n\n")
       end
 
@@ -354,8 +415,8 @@ module Ladb
         css = _tab_states_qss(TAB, tabs, 'Document tabs')
         css.concat(_plus_qss(tabs['plus']))
         css.concat(_close_qss(tabs['close'], assets_dir))
-        css.concat(_frame_qss(tabs['frame'], _color(tabs['strip']), _color(scene_strip)))
-        strip = _color(tabs['strip'])
+        css.concat(_frame_qss(tabs['frame'], _color(tabs['background']), _color(scene_strip)))
+        strip = _color(tabs['background'])
         if strip
           css << "/* Document tabs: strip (the dock area), given back to tray titles and dock separators */\n#{DOCK_AREA} {\n  background-color: #{strip};\n}"
           css << "SketchUpTitleBarWidget,\nKDDockWidgets--QtWidgets--Separator::handle {\n  background-color: palette(window);\n}"
@@ -385,7 +446,8 @@ module Ladb
 
       # A border color (or 'transparent') on any state replaces the native frame on every state,
       # and drops the native background. box : declarations added to the normal state.
-      def self._button_states_qss(selectors, btn, box, title)
+      # extra : (state, its hash) -> more declarations for that state.
+      def self._button_states_qss(selectors, btn, box, title, extra = nil)
         states = PLUS_STATES.map { |st| [st, btn[st].is_a?(Hash) ? btn[st] : {}] }
         bordered = states.any? { |_, h| _color(h['border']) }
         css = states.filter_map do |st, h|
@@ -402,6 +464,7 @@ module Ladb
             decl << "border-color: #{bd};"
           end
           decl << "color: #{fg};" if fg
+          decl.concat(extra.(st, h)) if extra
           "#{selectors.map { |s| st == 'normal' ? s : "#{s}:#{st}" }.join(",\n")} {\n  #{decl.join("\n  ")}\n}" unless decl.empty?
         end
         css[0] = "/* #{title} */\n#{css[0]}" unless css.empty?
@@ -414,7 +477,8 @@ module Ladb
       SCENE_PLUS = 'CPageTabs > QToolButton'
       SCENE_SEARCH = 'CPageTabs > QPushButton'
 
-      def self._scenes_qss(sc)
+      # assets_dir : where the caller writes #assets (the lens SVG files).
+      def self._scenes_qss(sc, assets_dir = '.')
         return '' unless sc.is_a?(Hash) && sc['enabled']
         css = _tab_states_qss(SCENE_TAB, sc, 'Scene tabs')
         # Both on CPageTabs : its palette paints the line, its min / max size the band.
@@ -428,7 +492,8 @@ module Ladb
           css.concat(_button_states_qss([SCENE_PLUS], sc['plus'], _scene_plus_box(sc['plus']), "Scene tabs: the '+' button (box bottom kept on the tab line)"))
         end
         if sc['search'].is_a?(Hash)
-          css.concat(_button_states_qss([SCENE_SEARCH], sc['search'], _search_box(sc['search']), 'Scene tabs: the search button (the tabs follow its width)'))
+          css.concat(_button_states_qss([SCENE_SEARCH], sc['search'], _search_box(sc['search']), 'Scene tabs: the search button (the tabs follow its width)',
+                                         ->(st, h) { _lens_qss(h['icon'], st == 'normal', assets_dir) }))
         end
         css.join("\n\n")
       end
@@ -599,6 +664,52 @@ module Ladb
         %Q{<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" stroke="#{hex}" stroke-width="1.6" stroke-linecap="round"/></svg>\n}
       end
 
+      # The scene search lens. SketchUp disables the button while the model has no scene :
+      # Qt then paints the icon in its Disabled mode, grayed unless the icon has a 'disabled'
+      # image (`icon: url(a), url(b) disabled`), here the normal color faded. An SVG url
+      # makes a QSvgIconEngine, which only uses an added image of exactly icon size x screen
+      # scale, and the button's icon size is not 24 (grayed live, measured headless) : PNG
+      # files make a QPixmapIconEngine, which scales the best image of the asked mode. Drawn
+      # at 2x (LENS_PX) for Retina, in a 24-unit box : ring r 6 around (10.5, 10.5), handle
+      # (15, 15)-(20, 20), stroke 2, round caps.
+      LENS_PX = 48
+      LENS_DISABLED_OPACITY = 0.4
+
+      def self._lens_qss(color, normal, assets_dir)
+        c = _hex(color)
+        return [] unless c
+        urls = [%Q{url("#{File.join(assets_dir, _lens_name(c))}")}]
+        urls << %Q{url("#{File.join(assets_dir, _lens_name(c, true))}") disabled} if normal
+        ["icon: #{urls.join(', ')};"]
+      end
+
+      def self._lens_name(hex, disabled = false)
+        "search-#{hex.delete('#')}#{disabled ? '-disabled' : ''}.png"
+      end
+
+      # Binary PNG (RGBA), 4 x 4 supersampled ; cached, assets are built on every apply.
+      def self._lens_png(hex, disabled = false)
+        (@lens_png ||= {})[[hex, disabled]] ||= begin
+          rgb = hex.delete('#').scan(/\h\h/).map(&:hex)
+          opacity = disabled ? LENS_DISABLED_OPACITY : 1.0
+          n = 4
+          hit = lambda do |x, y|
+            t = ((x + y - 30) / 10.0).clamp(0.0, 1.0)
+            (Math.hypot(x - 10.5, y - 10.5) - 6).abs <= 1 || Math.hypot(x - 15 - 5 * t, y - 15 - 5 * t) <= 1
+          end
+          k = 24.0 / LENS_PX
+          rows = (0...LENS_PX).map do |j|
+            "\0".b + (0...LENS_PX).map do |i|
+              hits = (0...n * n).count { |s| hit.((i + (s % n + 0.5) / n) * k, (j + (s / n + 0.5) / n) * k) }
+              (rgb + [(255 * opacity * hits / (n * n)).round]).pack('C4')
+            end.join
+          end.join
+          chunk = ->(type, data) { [data.bytesize].pack('N') + type + data + [Zlib.crc32(type + data)].pack('N') }
+          "\x89PNG\r\n\x1a\n".b + chunk.('IHDR', [LENS_PX, LENS_PX, 8, 6, 0, 0, 0].pack('NNC5')) +
+            chunk.('IDAT', Zlib::Deflate.deflate(rows)) + chunk.('IEND', '')
+        end
+      end
+
       def self._plus_box(plus)
         gap = plus['gap'].to_i.clamp(0, 16)
         size = plus['size'].to_i.clamp(17, 29)
@@ -658,6 +769,44 @@ module Ladb
           "/* Toolbars: separators */\n#{seps.map { |s| "#{s}:horizontal" }.join(",\n")} {\n  background-color: #{c};\n  margin: #{i}px 2px #{i}px 3px;\n}",
           "#{seps.map { |s| "#{s}:vertical" }.join(",\n")} {\n  background-color: #{c};\n  margin: 3px #{i}px 2px #{i}px;\n}",
         ]
+      end
+
+      # [style, color] ; color nil for 'native' and 'none' (no image).
+      def self._handle(handle)
+        handle = {} unless handle.is_a?(Hash)
+        style = HANDLE_STYLES.include?(handle['style']) ? handle['style'] : 'native'
+        color = style == 'dots' ? _hex(handle['color']) : nil
+        style = 'none' if style == 'dots' && !color # unset color : hidden, as the separators
+        [style, color]
+      end
+
+      def self._handle_qss(bars, handle, assets_dir)
+        style, color = _handle(handle)
+        return [] if style == 'native'
+        handles = bars.map { |b| "#{b}::handle" }
+        return ["/* Toolbars: move handle hidden */\n#{handles.join(",\n")} {\n  background: transparent;\n  border: none;\n}"] if style == 'none'
+        { 'horizontal' => 'margin-right', 'vertical' => 'margin-bottom' }.map.with_index do |(o, margin), i|
+          path = File.join(assets_dir, _handle_name(style, o, color))
+          "#{i.zero? ? "/* Toolbars: move handle */\n" : ''}#{handles.map { |h| "#{h}:#{o}" }.join(",\n")} {\n  border: none;\n  #{margin}: #{HANDLE_MARGIN}px;\n  image: url(\"#{path}\");\n}"
+        end
+      end
+
+      # The content's CRC in the name : Qt caches an image by its URL, a drawing change needs a new one.
+      def self._handle_name(style, orientation, hex)
+        "handle-#{style}-#{orientation[0]}-#{hex.delete('#')}-#{Zlib.crc32(_handle_svg(style, orientation, hex)).to_s(16)}.svg"
+      end
+
+      # A horizontal toolbar has a vertical handle at its start (2 columns x 6 rows of 1 px dots,
+      # 3 px apart : the Fusion grip) ; a vertical toolbar the same, turned.
+      def self._handle_svg(_style, orientation, hex)
+        w, h = 4, 16
+        shapes = [0, 3].product([0, 3, 6, 9, 12, 15]).map { |x, y| [x, y, 1, 1] }
+        if orientation == 'vertical'
+          w, h = h, w
+          shapes = shapes.map { |x, y, sw, sh| [y, x, sh, sw] }
+        end
+        rects = shapes.map { |x, y, sw, sh| %Q{<rect x="#{x}" y="#{y}" width="#{sw}" height="#{sh}"/>} }.join
+        %Q{<svg xmlns="http://www.w3.org/2000/svg" width="#{w}" height="#{h}" viewBox="0 0 #{w} #{h}"><g fill="#{hex}">#{rects}</g></svg>\n}
       end
 
       def self._toolbar_selectors(tb)

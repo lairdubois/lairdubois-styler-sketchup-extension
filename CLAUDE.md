@@ -18,6 +18,9 @@ reports itself unsupported and does nothing.
 - `src/ladb_styler/qt.rb` — the Qt native layer (Fiddle → Qt)
 - `src/ladb_styler/macos.rb` — the AppKit native layer (Fiddle → `objc_msgSend`): main window title bar color
 - `src/ladb_styler/theme.rb` — theme settings → QSS generator
+- `src/ladb_styler/presets/*.json` — built-in presets (read-only, listed in file name order), same
+  format as an exported preset: export one from the dialog and drop it here to add one.
+  `Theme::DEFAULTS` stays the key schema (and the "Defaults" button); keep `01_bluesky.json` (Styler BlueSky) in sync with it
 - `src/ladb_styler/dialog.rb` + `html/settings.html` — settings dialog, every change saved and applied live
 - `./build.sh` → `dist/ladb_styler-<version>.rbz`
 

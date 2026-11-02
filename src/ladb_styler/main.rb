@@ -7,6 +7,7 @@
 #   Ladb::Styler.clear             # back to SketchUp's native look (until next apply)
 #   puts Ladb::Styler.qss          # generated style sheet
 #   Ladb::Styler.presets.keys      # saved presets
+#   Ladb::Styler.builtin_presets.keys  # built-in presets (presets/*.json)
 
 require 'json'
 require_relative 'qt'
@@ -22,6 +23,7 @@ module Ladb
     ASSETS_DIR = File.join(Sketchup.temp_dir, 'ladb_styler') # files the style sheet refers to (Theme.assets)
 
     PREFS_KEY_PRESETS = 'presets'
+    PREFS_KEY_ACTIVE_PRESET = 'active_preset'
 
     # read_default evals the stored value, and write_default wraps a string in quotes
     # without escaping it: any `"` in the JSON breaks the eval. The JSON is therefore
@@ -47,23 +49,81 @@ module Ladb
     end
 
     # ----- Presets : { name => theme }, named snapshots of the whole theme.
+    #
+    # Built-in presets are the preset files (format below) in presets/, listed in file
+    # name order, read-only. Saved presets are the user's, in the SketchUp preferences ;
+    # a saved preset never takes a built-in name.
+
+    PRESETS_DIR = File.join(__dir__, 'presets')
+
+    # Read once ; a `load` of this file reads them again.
+    @builtin_presets = nil
+
+    def self.builtin_presets
+      @builtin_presets ||= Dir.glob(File.join(PRESETS_DIR, '*.json')).sort.each_with_object({}) do |path, presets|
+        name, theme = _parse_preset_file(path)
+        presets[name] ||= theme
+      rescue StandardError => e
+        puts "[Styler] Built-in preset #{File.basename(path)} skipped: #{e.message}"
+      end
+    end
+
+    def self.builtin_preset?(name)
+      builtin_presets.key?(name)
+    end
 
     def self.presets
       presets = _read_json(PREFS_KEY_PRESETS)
-      presets.is_a?(Hash) ? presets : {}
+      presets.is_a?(Hash) ? presets.reject { |name, _| builtin_preset?(name) } : {}
+    end
+
+    def self.preset?(name)
+      builtin_preset?(name) || presets.key?(name)
     end
 
     def self.save_preset(name, theme)
+      raise ArgumentError, "\"#{name}\" is a built-in preset" if builtin_preset?(name)
       _write_json(PREFS_KEY_PRESETS, presets.merge(name => Theme.normalize(theme)))
     end
 
     def self.delete_preset(name)
       _write_json(PREFS_KEY_PRESETS, presets.tap { |p| p.delete(name) })
+      self.active_preset = nil if _read_json(PREFS_KEY_ACTIVE_PRESET) == name
+    end
+
+    # Saved presets only.
+    def self.rename_preset(name, new_name)
+      all = presets
+      raise ArgumentError, "unknown preset \"#{name}\"" unless all.key?(name)
+      raise ArgumentError, "\"#{new_name}\" already exists" if preset?(new_name)
+      was_active = active_preset == name
+      _write_json(PREFS_KEY_PRESETS, all.to_h { |n, t| [n == name ? new_name : n, t] })
+      self.active_preset = new_name if was_active
+    end
+
+    # ----- Active preset : the last one applied or saved, nil after a reset.
+
+    def self.active_preset
+      name = _read_json(PREFS_KEY_ACTIVE_PRESET)
+      name.is_a?(String) && preset?(name) ? name : nil
+    end
+
+    def self.active_preset=(name)
+      _write_json(PREFS_KEY_ACTIVE_PRESET, name)
+    end
+
+    # True when the theme differs from the active preset. The master 'enabled' switch is
+    # not a style choice : left out.
+    def self.preset_modified?(theme = self.theme)
+      name = active_preset
+      return false unless name
+      strip = ->(t) { Theme.normalize(t).tap { |h| h.delete('enabled') } }
+      strip.(theme) != strip.(preset(name))
     end
 
     # Normalized on read : a preset saved by an older version gets the new keys' defaults.
     def self.preset(name)
-      theme = presets[name]
+      theme = builtin_presets[name] || presets[name]
       theme && Theme.normalize(theme)
     end
 
@@ -81,18 +141,25 @@ module Ladb
     end
 
     # Returns [name, theme] ; raises ArgumentError / JSON::ParserError on a file that is not a preset.
-    # The name defaults to the file name ; an existing preset is never replaced : " (2)", " (3)"… is appended.
-    def self.read_preset_file(path)
+    # The name defaults to the file name.
+    def self._parse_preset_file(path)
       data = JSON.parse(File.read(path, encoding: 'UTF-8'))
       unless data.is_a?(Hash) && data['format'] == PRESET_FILE_FORMAT && data['theme'].is_a?(Hash)
         raise ArgumentError, 'not a Styler preset file'
       end
-      base = data['name'].to_s.strip
-      base = File.basename(path, '.*') if base.empty?
+      name = data['name'].to_s.strip
+      name = File.basename(path, '.*') if name.empty?
+      [name, Theme.normalize(data['theme'])]
+    end
+
+    # As _parse_preset_file, for an import : an existing preset (built-in or saved) is never
+    # replaced, " (2)", " (3)"… is appended to the name.
+    def self.read_preset_file(path)
+      base, theme = _parse_preset_file(path)
       name = base
       n = 1
-      name = "#{base} (#{n += 1})" while presets.key?(name)
-      [name, Theme.normalize(data['theme'])]
+      name = "#{base} (#{n += 1})" while preset?(name)
+      [name, theme]
     end
 
     def self.qss(theme = self.theme)
@@ -104,7 +171,7 @@ module Ladb
       assets = Theme.assets(theme)
       return if assets.empty?
       Dir.mkdir(ASSETS_DIR) unless File.directory?(ASSETS_DIR)
-      assets.each { |name, content| File.write(File.join(ASSETS_DIR, name), content) }
+      assets.each { |name, content| File.binwrite(File.join(ASSETS_DIR, name), content) } # the lens is a PNG
     end
 
     # Returns :ok, :cleared, :unsupported, :no_window or :foreign (see Qt.set_style_sheet).
